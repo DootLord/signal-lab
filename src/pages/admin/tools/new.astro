@@ -1,6 +1,7 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import ToolForm from '../../../components/ToolForm.astro';
+import PageHead from '../../../components/PageHead.astro';
 import { createTool, type ToolInput } from '../../../lib/db.ts';
 import { parseToolForm } from '../../../lib/forms.ts';
 
@@ -16,10 +17,9 @@ if (Astro.request.method === 'POST') {
   value = result.value;
 }
 ---
-<Base title="Add a tool">
-  <div class="wrap section" style="max-width:820px">
-    <p class="small"><a href="/admin">← Admin</a></p>
-    <h1>Add a tool</h1>
-    <ToolForm value={value} errors={errors} submitLabel="Publish" />
+<Base title="Add a tool" nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Add a tool' }]}>
+  <div style="max-width:880px">
+    <PageHead eyebrow="Admin" title="Add a tool" description="Tools you add here are published straight away." />
+    <ToolForm value={value} errors={errors} submitLabel="Publish tool" />
   </div>
 </Base>

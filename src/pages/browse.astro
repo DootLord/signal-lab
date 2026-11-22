@@ -1,11 +1,16 @@
 ---
-import Base from '../layouts/Base.astro';
+import Base, { type Nav } from '../layouts/Base.astro';
 import ToolCard from '../components/ToolCard.astro';
-import { listPublished, tagCounts, kinds, type Kind } from '../lib/db.ts';
+import PageHead from '../components/PageHead.astro';
+import Empty from '../components/Empty.astro';
+import TopicIcon from '../components/TopicIcon.astro';
+import { listPublished, siteStats, tagCounts, kinds, type Kind } from '../lib/db.ts';
+import { plural, topicLabel } from '../lib/format.ts';
+import { ArrowLeft, ArrowRight, ChevronDown, Gem, LayoutGrid, Sparkles, X } from '../components/icons.ts';
 
 const PAGE_SIZE = 24;
 const params = Astro.url.searchParams;
-const q = (params.get('q') ?? '').slice(0, 100);
+const q = (params.get('q') ?? '').trim().slice(0, 100);
 const tag = params.get('tag') ?? '';
 const kindParam = params.get('kind') ?? '';
 const kind = kinds.includes(kindParam as Kind) ? (kindParam as Kind) : undefined;
@@ -13,7 +18,8 @@ const order = params.get('sort') === 'name' ? 'name' : 'recent';
 const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
 
 const { total, tools } = listPublished({ q, tag, kind, order, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
-const tags = tagCounts();
+const topics = tagCounts();
+const stats = siteStats();
 const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
 const link = (changes: Record<string, string | undefined>) => {
@@ -23,61 +29,88 @@ const link = (changes: Record<string, string | undefined>) => {
   const s = next.toString();
   return '/browse' + (s ? '?' + s : '');
 };
-const heading = kind === 'gem' ? 'Gems' : kind === 'new' ? 'New & moving' : 'All tools';
+const pageLink = (p: number) => {
+  const next = new URLSearchParams(params);
+  p > 1 ? next.set('page', String(p)) : next.delete('page');
+  const s = next.toString();
+  return '/browse' + (s ? '?' + s : '');
+};
+
+const nav: Nav = tag ? 'none' : kind === 'gem' ? 'gems' : kind === 'new' ? 'new' : 'browse';
+const title = q ? `Results for “${q}”` : tag ? `${topicLabel(tag)} tools` : kind === 'gem' ? 'Gems you might have missed' : kind === 'new' ? 'New & moving' : 'All tools';
+const description = tag
+  ? `Every tool tagged ${topicLabel(tag)}. Narrow it down with a type filter or a search.`
+  : kind === 'gem'
+  ? 'Established, well-loved tools that many developers have still never heard of.'
+  : kind === 'new'
+    ? 'Recently released tools, or ones picking up momentum right now.'
+    : 'Every tool in the catalogue. Filter by type or topic, or search by name, purpose or what it replaces.';
+const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicLabel(tag) }] : kind ? [{ label: kind === 'gem' ? 'Gems' : 'New' }] : [])];
 ---
-<Base title={tag ? `${tag} tools` : heading}>
-  <div class="wrap section">
-    <div class="section-head">
-      <div>
-        <h1>{heading}{tag && <> · <span class="muted">{tag}</span></>}</h1>
-        <p class="muted">{total} {total === 1 ? 'tool' : 'tools'}{q && <> matching “{q}”</>}</p>
-      </div>
-    </div>
+<Base title={title} nav={nav} topic={tag || undefined} crumbs={crumbs} query={q} description={description}>
+  <PageHead eyebrow="Browse" title={title} description={description} />
 
-    <form class="filters" action="/browse">
-      <div class="field">
-        <label for="q">Search</label>
-        <input id="q" type="search" name="q" value={q} placeholder="Name, purpose, what it replaces…" />
+  <div class="browse">
+    <aside class="filters" aria-label="Filters">
+      <div class="filter-group">
+        <h3>Type</h3>
+        <div class="filter-list">
+          <a class="filter-link" href={link({ kind: undefined })} aria-current={!kind ? 'true' : undefined}><LayoutGrid size={16} /> Everything <span class="nav-count">{stats.total}</span></a>
+          <a class="filter-link" href={link({ kind: 'gem' })} aria-current={kind === 'gem' ? 'true' : undefined}><Gem size={16} /> Gems <span class="nav-count">{stats.gems}</span></a>
+          <a class="filter-link" href={link({ kind: 'new' })} aria-current={kind === 'new' ? 'true' : undefined}><Sparkles size={16} /> New <span class="nav-count">{stats.fresh}</span></a>
+        </div>
       </div>
-      <div class="field narrow">
-        <label for="kind">Type</label>
-        <select id="kind" name="kind">
-          <option value="">Everything</option>
-          <option value="gem" selected={kind === 'gem'}>Gems</option>
-          <option value="new" selected={kind === 'new'}>New</option>
-        </select>
+      <div class="filter-group">
+        <h3>Topics</h3>
+        <div class="filter-list">
+          {topics.map((t) => (
+            <a class="filter-link" href={link({ tag: t.tag === tag ? undefined : t.tag })} aria-current={t.tag === tag ? 'true' : undefined}>
+              <TopicIcon tag={t.tag} size={16} /> {topicLabel(t.tag)} <span class="nav-count">{t.count}</span>
+            </a>
+          ))}
+        </div>
       </div>
-      <div class="field narrow">
-        <label for="sort">Sort</label>
-        <select id="sort" name="sort">
-          <option value="">Recently added</option>
-          <option value="name" selected={order === 'name'}>Name</option>
-        </select>
-      </div>
-      {tag && <input type="hidden" name="tag" value={tag} />}
-      <button class="btn primary" type="submit">Apply</button>
-    </form>
+    </aside>
 
-    <div class="tags" style="margin-bottom:1.5rem">
-      {tag && <a class="tag active" href={link({ tag: undefined })}>{tag} ✕</a>}
-      {tags.filter((t) => t.tag !== tag).slice(0, 30).map((t) => <a class="tag" href={link({ tag: t.tag })}>{t.tag}<span class="count">{t.count}</span></a>)}
-    </div>
-
-    {tools.length ? (
-      <div class="cards">{tools.map((tool) => <ToolCard tool={tool} />)}</div>
-    ) : (
-      <div class="empty">
-        <p>Nothing matches that yet.</p>
-        <a class="btn" href="/browse">Clear filters</a>
+    <section aria-label="Results">
+      <div class="toolbar">
+        <div class="active-filters">
+          <span class="result-count"><b>{plural(total, 'tool')}</b></span>
+          {q && <a class="chip" href={link({ q: undefined })} aria-label={`Remove search ${q}`}>“{q}” <X size={14} /></a>}
+          {tag && <a class="chip" href={link({ tag: undefined })} aria-label={`Remove topic ${tag}`}>#{tag} <X size={14} /></a>}
+          {kind && <a class="chip" href={link({ kind: undefined })} aria-label="Remove type filter">{kind === 'gem' ? 'Gems' : 'New'} <X size={14} /></a>}
+        </div>
+        <form action="/browse" class="btn-row">
+          {q && <input type="hidden" name="q" value={q} />}
+          {tag && <input type="hidden" name="tag" value={tag} />}
+          {kind && <input type="hidden" name="kind" value={kind} />}
+          <label class="visually-hidden" for="sort">Sort by</label>
+          <span class="select-wrap">
+            <select id="sort" name="sort" data-autosubmit>
+              <option value="">Recently added</option>
+              <option value="name" selected={order === 'name'}>Name A–Z</option>
+            </select>
+            <ChevronDown size={14} />
+          </span>
+          <noscript><button class="btn sm" type="submit">Sort</button></noscript>
+        </form>
       </div>
-    )}
 
-    {pages > 1 && (
-      <nav class="pager" aria-label="Pages">
-        {page > 1 ? <a class="btn" href={link({ page: String(page - 1) })}>← Previous</a> : <span />}
-        <span class="muted small">Page {page} of {pages}</span>
-        {page < pages ? <a class="btn" href={link({ page: String(page + 1) })}>Next →</a> : <span />}
-      </nav>
-    )}
+      {tools.length ? (
+        <div class="grid">{tools.map((tool) => <ToolCard tool={tool} />)}</div>
+      ) : (
+        <Empty title="Nothing matches that yet" text="Try a broader search, or remove a filter.">
+          <a class="btn" href="/browse">Clear all filters</a>
+        </Empty>
+      )}
+
+      {pages > 1 && (
+        <nav class="pager" aria-label="Pagination">
+          {page > 1 ? <a class="btn" href={pageLink(page - 1)}><ArrowLeft size={16} /> Previous</a> : <span />}
+          <span class="muted small">Page {page} of {pages}</span>
+          {page < pages ? <a class="btn" href={pageLink(page + 1)}>Next <ArrowRight size={16} /></a> : <span />}
+        </nav>
+      )}
+    </section>
   </div>
 </Base>

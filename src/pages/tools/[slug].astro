@@ -2,65 +2,96 @@
 import Base from '../../layouts/Base.astro';
 import ToolCard from '../../components/ToolCard.astro';
 import KindBadge from '../../components/KindBadge.astro';
+import Monogram from '../../components/Monogram.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
 import { getPublishedBySlug, related } from '../../lib/db.ts';
+import { formatDate, host } from '../../lib/format.ts';
+import { ArrowUpRight, BookOpen, Clock, FolderGit2, Globe, Info, Pencil, Repeat, Terminal } from '../../components/icons.ts';
 
 const tool = getPublishedBySlug(Astro.params.slug ?? '');
 if (!tool) return new Response(null, { status: 404, statusText: 'Not found' });
-const more = related(tool);
-const host = (u: string) => new URL(u).host.replace(/^www\./, '');
+const more = related(tool, 3);
+const links = [
+  tool.website && { href: tool.website, label: 'Website', Icon: Globe },
+  tool.repo && { href: tool.repo, label: 'Source code', Icon: FolderGit2 },
+  tool.docs && { href: tool.docs, label: 'Documentation', Icon: BookOpen },
+].filter((l): l is { href: string; label: string; Icon: typeof Globe } => !!l);
+const primary = links[0];
 ---
-<Base title={tool.name} description={tool.tagline}>
-  <div class="wrap">
-    <header class="tool-head">
-      <p class="small"><a href="/browse">← All tools</a></p>
-      <h1>{tool.name} <KindBadge kind={tool.kind} /></h1>
-      <p class="tagline">{tool.tagline}</p>
-      <div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
-    </header>
-
-    <div class="tool-layout">
-      <div>
-        <section class="panel">
-          <h2>What it is</h2>
-          <p>{tool.description}</p>
-        </section>
-        {tool.replaces && (
-          <section class="panel">
-            <h2>Instead of</h2>
-            <p>{tool.replaces}</p>
-          </section>
-        )}
-        {tool.useWhen && (
-          <section class="panel">
-            <h2>Reach for it when</h2>
-            <p>{tool.useWhen}</p>
-          </section>
-        )}
-        {tool.tryIt && (
-          <section class="panel">
-            <h2>Try it in a few minutes</h2>
-            <pre class="try"><code>{tool.tryIt}</code></pre>
-          </section>
-        )}
+<Base title={tool.name} description={`${tool.name}: ${tool.tagline}`} crumbs={[{ label: 'Browse', href: '/browse' }, { label: tool.name }]}>
+  <header class="tool-hero">
+    <Monogram name={tool.name} />
+    <div class="tool-hero-main">
+      <div class="badges">
+        <KindBadge kind={tool.kind} />
+        {tool.tags.slice(0, 2).map((tag) => <span class="badge neutral">{tag}</span>)}
       </div>
-      <aside>
+      <h1>{tool.name}</h1>
+      <p class="tagline">{tool.tagline}</p>
+      <div class="tool-hero-actions">
+        {primary && <a class="btn primary" href={primary.href} rel="noopener" target="_blank">Visit {primary.label.toLowerCase()} <ArrowUpRight size={16} /></a>}
+        {links.slice(1).map((l) => <a class="btn" href={l.href} rel="noopener" target="_blank"><l.Icon size={16} /> {l.label}</a>)}
+        {Astro.locals.admin && <a class="btn ghost" href={`/admin/tools/${tool.id}`}><Pencil size={15} /> Edit</a>}
+      </div>
+    </div>
+  </header>
+
+  <div class="tool-layout">
+    <div>
+      <section class="panel">
+        <div class="panel-head"><Info size={17} /><h2>Overview</h2></div>
+        <div class="panel-body prose"><p>{tool.description}</p></div>
+      </section>
+
+      {(tool.replaces || tool.useWhen) && (
+        <div class="callouts">
+          {tool.replaces && <div class="callout instead"><h3><Repeat size={15} /> Instead of</h3><p>{tool.replaces}</p></div>}
+          {tool.useWhen && <div class="callout when"><h3><Clock size={15} /> Reach for it when</h3><p>{tool.useWhen}</p></div>}
+        </div>
+      )}
+
+      {tool.tryIt && (
         <section class="panel">
-          <h2>Links</h2>
-          <ul class="links">
-            {tool.website && <li><a href={tool.website} rel="noopener">Website · {host(tool.website)}</a></li>}
-            {tool.repo && <li><a href={tool.repo} rel="noopener">Source · {host(tool.repo)}</a></li>}
-            {tool.docs && <li><a href={tool.docs} rel="noopener">Docs</a></li>}
-          </ul>
+          <div class="panel-head"><Terminal size={17} /><h2>Try it in a few minutes</h2></div>
+          <div class="panel-body"><CodeBlock code={tool.tryIt} /></div>
         </section>
-        {Astro.locals.admin && <p class="small" style="margin-top:1rem"><a href={`/admin/tools/${tool.id}`}>Edit this card</a></p>}
-      </aside>
+      )}
     </div>
 
-    {more.length > 0 && (
-      <section class="section">
-        <h2>Related</h2>
-        <div class="cards">{more.map((t) => <ToolCard tool={t} />)}</div>
+    <aside class="aside-card">
+      <section class="panel">
+        <div class="panel-body">
+          <dl class="facts">
+            <div><dt>Type</dt><dd><KindBadge kind={tool.kind} /></dd></div>
+            <div><dt>Added</dt><dd>{formatDate(tool.publishedAt ?? tool.createdAt)}</dd></div>
+            <div><dt>Last updated</dt><dd>{formatDate(tool.updatedAt)}</dd></div>
+            {primary && <div><dt>Home</dt><dd>{host(primary.href)}</dd></div>}
+          </dl>
+        </div>
       </section>
-    )}
+      {links.length > 0 && (
+        <section class="panel">
+          <div class="panel-head"><h2>Links</h2></div>
+          <div class="panel-body">
+            <ul class="link-list">
+              {links.map((l) => (
+                <li><a href={l.href} rel="noopener" target="_blank"><l.Icon size={17} /><span>{l.label}<small>{host(l.href)}</small></span><ArrowUpRight size={15} class="muted" /></a></li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+      <section class="panel">
+        <div class="panel-head"><h2>Topics</h2></div>
+        <div class="panel-body"><div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div></div>
+      </section>
+    </aside>
   </div>
+
+  {more.length > 0 && (
+    <section class="section">
+      <div class="section-head"><div><h2>Related tools</h2><p>Other tools that share topics with {tool.name}.</p></div></div>
+      <div class="grid">{more.map((t) => <ToolCard tool={t} />)}</div>
+    </section>
+  )}
 </Base>

@@ -1,92 +1,117 @@
 ---
 import Base from '../../layouts/Base.astro';
 import KindBadge from '../../components/KindBadge.astro';
+import Monogram from '../../components/Monogram.astro';
+import PageHead from '../../components/PageHead.astro';
+import Empty from '../../components/Empty.astro';
 import { listByStatus, recentScans } from '../../lib/db.ts';
+import { formatDate, timeAgo } from '../../lib/format.ts';
+import { ChevronRight, CircleCheck, Inbox, LayoutGrid, LogOut, Pencil, Plus, Radar, X } from '../../components/icons.ts';
 
 const pending = listByStatus('pending');
 const published = listByStatus('published');
 const rejected = listByStatus('rejected');
-const scans = recentScans(5);
+const scans = recentScans(8);
+const lastScan = scans[0];
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—');
 ---
-<Base title="Admin">
-  <div class="wrap section">
-    <div class="section-head">
-      <h1>Admin</h1>
-      <div class="btn-row">
-        <a class="btn primary" href="/admin/tools/new">Add a tool</a>
-        <form method="post" action="/admin/logout"><button class="btn">Sign out</button></form>
-      </div>
+<Base title="Admin" nav="admin" crumbs={[{ label: 'Admin' }]}>
+  <PageHead eyebrow="Admin" title="Dashboard" description="Review what the scanner found and manage the catalogue.">
+    <div class="btn-row">
+      <a class="btn primary" href="/admin/tools/new"><Plus size={16} /> Add a tool</a>
+      <form method="post" action="/admin/logout"><button class="btn"><LogOut size={15} /> Sign out</button></form>
     </div>
+  </PageHead>
 
-    <section class="section">
-      <h2>Review queue <span class="muted">({pending.length})</span></h2>
-      <p class="muted">Suggestions from the scanner. Nothing appears on the site until you publish it.</p>
-      {pending.length === 0 ? <p class="empty">Nothing waiting. The scanner adds suggestions here when it runs.</p> : pending.map((t) => (
-        <article class="queue-item">
-          <h3><a href={`/admin/tools/${t.id}`}>{t.name}</a> <KindBadge kind={t.kind} /></h3>
-          <p>{t.tagline}</p>
-          {t.foundNote && <p class="why">{t.foundNote}{t.foundVia && <> · <a href={t.foundVia} rel="noopener">source</a></>}</p>}
-          <div class="btn-row">
-            <form method="post" action={`/admin/tools/${t.id}`}>
-              <input type="hidden" name="_action" value="publish" /><input type="hidden" name="back" value="/admin" />
-              <button class="btn primary">Publish</button>
-            </form>
-            <a class="btn" href={`/admin/tools/${t.id}`}>Edit first</a>
-            <form method="post" action={`/admin/tools/${t.id}`}>
-              <input type="hidden" name="_action" value="reject" /><input type="hidden" name="back" value="/admin" />
-              <button class="btn">Reject</button>
-            </form>
-          </div>
-        </article>
-      ))}
-    </section>
+  <div class="stat-tiles">
+    <div class={`stat-tile ${pending.length ? 'highlight' : ''}`}><span class="topic-icon"><Inbox size={18} /></span><div><b>{pending.length}</b><span>waiting for review</span></div></div>
+    <div class="stat-tile"><span class="topic-icon"><LayoutGrid size={18} /></span><div><b>{published.length}</b><span>published</span></div></div>
+    <div class="stat-tile"><span class="topic-icon"><X size={18} /></span><div><b>{rejected.length}</b><span>rejected</span></div></div>
+    <div class="stat-tile"><span class="topic-icon"><Radar size={18} /></span><div><b>{lastScan ? timeAgo(lastScan.started_at) : 'never'}</b><span>last scan</span></div></div>
+  </div>
 
-    <section class="section">
-      <h2>Scanner runs</h2>
-      {scans.length === 0 ? <p class="muted">The scanner hasn't run yet. See the README for setting it up as a Coolify scheduled task.</p> : (
-        <div class="table-scroll">
-          <table class="admin-table">
-            <thead><tr><th>Started</th><th>Candidates</th><th>Suggested</th><th>Result</th></tr></thead>
-            <tbody>
-              {scans.map((s) => (
-                <tr>
-                  <td>{fmt(s.started_at)}</td><td>{s.candidates}</td><td>{s.suggested}</td>
-                  <td>{s.error ? <span style="color:var(--danger)">{s.error}</span> : s.finished_at ? 'OK' : 'Running or interrupted'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+  <section class="section" style="margin-top:0">
+    <div class="section-head"><div><h2>Review queue</h2><p>Scanner suggestions. Nothing appears on the site until you publish it.</p></div></div>
+    {pending.length === 0 ? (
+      <Empty title="You’re all caught up" text="New suggestions will appear here after the scanner runs." />
+    ) : (
+      <div class="queue">
+        {pending.map((t) => (
+          <article class="queue-item">
+            <Monogram name={t.name} />
+            <div class="q-main">
+              <h3>{t.name} <KindBadge kind={t.kind} /></h3>
+              <p class="q-tagline">{t.tagline}</p>
+              {t.foundNote && <p class="why">{t.foundNote}{t.foundVia && <> · <a class="link" href={t.foundVia} rel="noopener" target="_blank">source</a></>}</p>}
+              <div class="btn-row">
+                <form method="post" action={`/admin/tools/${t.id}`}>
+                  <input type="hidden" name="_action" value="publish" /><input type="hidden" name="back" value="/admin" />
+                  <button class="btn primary sm"><CircleCheck size={14} /> Publish</button>
+                </form>
+                <a class="btn sm" href={`/admin/tools/${t.id}`}><Pencil size={14} /> Edit first</a>
+                <form method="post" action={`/admin/tools/${t.id}`}>
+                  <input type="hidden" name="_action" value="reject" /><input type="hidden" name="back" value="/admin" />
+                  <button class="btn ghost sm">Reject</button>
+                </form>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+  </section>
 
-    <section class="section">
-      <h2>Published <span class="muted">({published.length})</span></h2>
-      <div class="table-scroll">
-        <table class="admin-table">
-          <thead><tr><th>Tool</th><th>Type</th><th>Tags</th><th>Updated</th></tr></thead>
+  <section class="section">
+    <div class="section-head"><div><h2>Scanner runs</h2><p>Runs as a Coolify scheduled task (<code>node scripts/scan.ts</code>).</p></div></div>
+    {scans.length === 0 ? (
+      <Empty title="The scanner hasn’t run yet" text="See the README for setting it up as a Coolify scheduled task." />
+    ) : (
+      <div class="panel table-wrap">
+        <table class="table">
+          <thead><tr><th>Started</th><th>Candidates</th><th>Suggested</th><th>Result</th></tr></thead>
           <tbody>
-            {published.map((t) => (
+            {scans.map((s) => (
               <tr>
-                <td><a href={`/admin/tools/${t.id}`}>{t.name}</a></td>
-                <td><KindBadge kind={t.kind} /></td>
-                <td class="muted">{t.tags.join(', ')}</td>
-                <td class="muted">{fmt(t.updatedAt)}</td>
+                <td>{fmt(s.started_at)}</td><td>{s.candidates}</td><td>{s.suggested}</td>
+                <td>{s.error ? <span class="status-dot err" style="color:var(--danger)">{s.error}</span> : s.finished_at ? <span class="status-dot">Completed</span> : <span class="status-dot warn">Running or interrupted</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
-
-    {rejected.length > 0 && (
-      <section class="section">
-        <details>
-          <summary><strong>Rejected ({rejected.length})</strong> <span class="muted">· kept so the scanner doesn't suggest them again</span></summary>
-          <ul>{rejected.map((t) => <li><a href={`/admin/tools/${t.id}`}>{t.name}</a> <span class="muted">· {t.tagline}</span></li>)}</ul>
-        </details>
-      </section>
     )}
-  </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><h2>Published tools</h2><p>{published.length} live on the site.</p></div></div>
+    <div class="panel table-wrap">
+      <table class="table">
+        <thead><tr><th>Tool</th><th>Type</th><th>Topics</th><th>Updated</th><th></th></tr></thead>
+        <tbody>
+          {published.map((t) => (
+            <tr>
+              <td><a class="name-cell" href={`/admin/tools/${t.id}`}><Monogram name={t.name} size={28} />{t.name}</a></td>
+              <td><KindBadge kind={t.kind} /></td>
+              <td class="muted">{t.tags.join(', ')}</td>
+              <td class="muted">{formatDate(t.updatedAt)}</td>
+              <td><a class="btn ghost sm" href={`/admin/tools/${t.id}`} aria-label={`Edit ${t.name}`}><ChevronRight size={16} /></a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {rejected.length > 0 && (
+    <section class="section">
+      <details class="disclosure panel panel-body">
+        <summary><ChevronRight size={16} /> Rejected ({rejected.length}) <span class="muted small" style="font-weight:400">· kept so the scanner doesn’t suggest them again</span></summary>
+        <div class="rows" style="margin-top:14px">
+          {rejected.map((t) => (
+            <div class="row"><Monogram name={t.name} size={32} /><div class="row-main"><h3><a href={`/admin/tools/${t.id}`}>{t.name}</a></h3><p>{t.tagline}</p></div></div>
+          ))}
+        </div>
+      </details>
+    </section>
+  )}
 </Base>

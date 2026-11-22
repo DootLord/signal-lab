@@ -1,55 +1,140 @@
 ---
 import Base from '../layouts/Base.astro';
 import ToolCard from '../components/ToolCard.astro';
-import { listPublished, tagCounts } from '../lib/db.ts';
+import ToolRow from '../components/ToolRow.astro';
+import KindBadge from '../components/KindBadge.astro';
+import Monogram from '../components/Monogram.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import TopicIcon from '../components/TopicIcon.astro';
+import { featuredGem, listPublished, siteStats, tagCounts } from '../lib/db.ts';
+import { plural, topicLabel } from '../lib/format.ts';
+import { ArrowRight, Clock, Gem, Repeat, Search, Terminal } from '../components/icons.ts';
 
+const stats = siteStats();
+const featured = featuredGem();
 const fresh = listPublished({ kind: 'new', limit: 6 });
-const gems = listPublished({ kind: 'gem', order: 'random', limit: 6 });
+const gems = listPublished({ kind: 'gem', order: 'random', limit: 7 }).tools.filter((t) => t.id !== featured?.id).slice(0, 6);
 const recent = listPublished({ limit: 6 });
-const tags = tagCounts().slice(0, 24);
+const topics = tagCounts().slice(0, 12);
+const quick = tagCounts().slice(0, 5);
 ---
-<Base>
-  <section class="hero wrap">
-    <h1>Find the tools you'd hear about from a good teammate.</h1>
-    <p>What's new and moving in software development, plus the established gems that usually only spread by word of mouth.</p>
-    <form action="/browse" role="search">
-      <label class="visually-hidden" for="hero-search">Search tools</label>
-      <input id="hero-search" type="search" name="q" placeholder="Try “testing”, “python” or “replace nginx”" />
-      <button class="btn primary" type="submit">Search</button>
+<Base nav="home">
+  <section class="hero">
+    <span class="eyebrow">Developer discovery</span>
+    <h1>Find the tools you’d hear about from a <em>good teammate</em>.</h1>
+    <p class="lede">What’s new and moving in software development, plus the established gems that usually only spread by word of mouth. Every entry is reviewed by a human.</p>
+    <form class="hero-search" action="/browse" role="search">
+      <label class="search">
+        <Search size={18} />
+        <span class="visually-hidden">Search tools</span>
+        <input type="search" name="q" placeholder="Try “testing”, “python” or “replace nginx”" />
+      </label>
+      <button class="btn primary lg" type="submit">Search <ArrowRight size={16} /></button>
     </form>
+    {quick.length > 0 && (
+      <div class="quick">
+        <span>Popular:</span>
+        {quick.map(({ tag }) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+      </div>
+    )}
+    <div class="stats">
+      <div class="stat"><b>{stats.total}</b><span>tools catalogued</span></div>
+      <div class="stat"><b>{stats.gems}</b><span>hidden gems</span></div>
+      <div class="stat"><b>{stats.topics}</b><span>topics</span></div>
+      <div class="stat"><b>{stats.recent}</b><span>added this month</span></div>
+    </div>
   </section>
+
+  {featured && (
+    <section class="section" aria-labelledby="featured-title">
+      <div class="section-head">
+        <div><span class="eyebrow">Gem of the week</span></div>
+        <a class="see-all" href={`/tools/${featured.slug}`}>Full details <ArrowRight size={15} /></a>
+      </div>
+      <article class="feature">
+        <div class="feature-main">
+          <div style="display:flex;gap:14px;align-items:center">
+            <Monogram name={featured.name} size={56} />
+            <div>
+              <h2 id="featured-title"><a href={`/tools/${featured.slug}`}>{featured.name}</a></h2>
+              <KindBadge kind={featured.kind} />
+            </div>
+          </div>
+          <p class="lead">{featured.description}</p>
+          <dl class="feature-facts">
+            {featured.replaces && <div class="fact"><dt><Repeat size={13} /> Instead of</dt><dd>{featured.replaces}</dd></div>}
+            {featured.useWhen && <div class="fact"><dt><Clock size={13} /> Reach for it when</dt><dd>{featured.useWhen}</dd></div>}
+          </dl>
+          <div class="tags">{featured.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
+        </div>
+        {featured.tryIt && (
+          <div class="feature-side">
+            <span class="label"><Terminal size={14} /> Try it in a few minutes</span>
+            <CodeBlock code={featured.tryIt} />
+            <a class="btn" href={`/tools/${featured.slug}`} style="align-self:flex-start">Read more about {featured.name}</a>
+          </div>
+        )}
+      </article>
+    </section>
+  )}
 
   {fresh.total > 0 && (
-    <section class="section wrap">
+    <section class="section">
       <div class="section-head">
-        <div><h2>New &amp; moving</h2><p class="muted">Recently released or picking up momentum.</p></div>
-        <a href="/browse?kind=new">All new tools →</a>
+        <div><h2>New &amp; moving</h2><p>Recently released, or picking up momentum right now.</p></div>
+        <a class="see-all" href="/browse?kind=new">View all {fresh.total} <ArrowRight size={15} /></a>
       </div>
-      <div class="cards">{fresh.tools.map((tool) => <ToolCard tool={tool} />)}</div>
+      <div class="grid">{fresh.tools.map((tool) => <ToolCard tool={tool} />)}</div>
     </section>
   )}
 
-  <section class="section wrap">
-    <div class="section-head">
-      <div><h2>Gems you might have missed</h2><p class="muted">Mature, well-loved, and somehow not on everyone's radar. A new mix every visit.</p></div>
-      <a href="/browse?kind=gem">All gems →</a>
+  {gems.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div><h2>Gems you might have missed</h2><p>Mature, well-loved, and somehow not on everyone’s radar. A fresh mix every visit.</p></div>
+        <a class="see-all" href="/browse?kind=gem">View all {stats.gems} <ArrowRight size={15} /></a>
+      </div>
+      <div class="grid">{gems.map((tool) => <ToolCard tool={tool} />)}</div>
+    </section>
+  )}
+
+  {topics.length > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div><h2>Browse by topic</h2><p>Jump into the part of your stack you care about.</p></div>
+        <a class="see-all" href="/topics">All {stats.topics} topics <ArrowRight size={15} /></a>
+      </div>
+      <div class="topic-grid">
+        {topics.map(({ tag, count }) => (
+          <a class="topic" href={`/browse?tag=${encodeURIComponent(tag)}`}>
+            <span class="topic-icon"><TopicIcon tag={tag} /></span>
+            <span><strong>{topicLabel(tag)}</strong><span>{plural(count, 'tool')}</span></span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {recent.total > 0 && (
+    <section class="section">
+      <div class="section-head">
+        <div><h2>Recently added</h2><p>The latest additions to the catalogue.</p></div>
+        <a class="see-all" href="/browse">Browse everything <ArrowRight size={15} /></a>
+      </div>
+      <div class="rows">{recent.tools.map((tool) => <ToolRow tool={tool} />)}</div>
+    </section>
+  )}
+
+  <section class="section">
+    <div class="cta">
+      <div>
+        <h2><Gem size={18} style="display:inline;vertical-align:-3px;color:var(--accent)" /> Stay in the loop</h2>
+        <p>New tools are added as they’re reviewed. Follow along with the RSS feed in your reader of choice.</p>
+      </div>
+      <div class="btn-row">
+        <a class="btn primary" href="/feed.xml">Subscribe via RSS</a>
+        <a class="btn" href="/about">How tools are chosen</a>
+      </div>
     </div>
-    {gems.total ? <div class="cards">{gems.tools.map((tool) => <ToolCard tool={tool} />)}</div> : <p class="empty">No gems yet.</p>}
   </section>
-
-  {fresh.total === 0 && recent.total > 0 && (
-    <section class="section wrap">
-      <div class="section-head"><h2>Recently added</h2><a href="/browse">Browse everything →</a></div>
-      <div class="cards">{recent.tools.map((tool) => <ToolCard tool={tool} />)}</div>
-    </section>
-  )}
-
-  {tags.length > 0 && (
-    <section class="section wrap">
-      <h2>Browse by topic</h2>
-      <div class="tags">
-        {tags.map(({ tag, count }) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}<span class="count">{count}</span></a>)}
-      </div>
-    </section>
-  )}
 </Base>

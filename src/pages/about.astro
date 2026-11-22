@@ -1,0 +1,44 @@
+---
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import { siteStats } from '../lib/db.ts';
+import { Gem, Rss, Sparkles } from '../components/icons.ts';
+
+const stats = siteStats();
+---
+<Base title="About" nav="about" crumbs={[{ label: 'About' }]} description="What Signal Lab is, how tools are found and how they're chosen.">
+  <div class="about">
+    <PageHead eyebrow="About" title="Tools worth knowing, without the noise" />
+    <div class="prose">
+      <p>Most developers learn about their best tools from a colleague: someone leans over and says “wait, you’re not using <em>that</em>?” Signal Lab tries to be that colleague. It is a hand-reviewed catalogue of {stats.total} developer tools, covering what’s new and the established gems that rarely get a launch post.</p>
+      <p>Every entry answers the same practical questions: what it is, what it replaces, when you’d reach for it, and how to try it in a few minutes.</p>
+    </div>
+
+    <h2>Two kinds of tools</h2>
+    <div class="kind-compare">
+      <div class="kind-box">
+        <span class="badge gem"><Gem size={12} stroke-width={2.4} /> Gem</span>
+        <p>Established, well-loved and actively maintained, yet often missed. Age is a feature here: these tools have proven themselves. You’d usually hear about them from a teammate rather than a headline.</p>
+      </div>
+      <div class="kind-box">
+        <span class="badge new"><Sparkles size={12} stroke-width={2.4} /> New</span>
+        <p>Recently released, or picking up real momentum. Often AI-related, but not only. These are worth knowing about now, even if they’re still maturing.</p>
+      </div>
+    </div>
+
+    <h2>How tools get here</h2>
+    <ol class="steps">
+      <li><span><strong>Discovery.</strong> A scanner regularly looks at rising GitHub projects, mature and actively maintained repositories across rotating topics, and well-received Show HN posts.</span></li>
+      <li><span><strong>Shortlisting.</strong> An AI model reads each candidate’s README, filters out noise (tutorials, demos, abandoned projects, household names) and drafts a card for the promising ones.</span></li>
+      <li><span><strong>Human review.</strong> Nothing is published automatically. Every suggestion is checked, edited or rejected by hand. Rejected tools are remembered so they don’t come back.</span></li>
+      <li><span><strong>Links you can trust.</strong> Website and source links come from GitHub or Hacker News data, never from the model, so nothing is invented.</span></li>
+    </ol>
+
+    <h2>Follow along</h2>
+    <div class="prose"><p>New tools appear as they’re reviewed. The <a href="/feed.xml">RSS feed</a> lists the 50 most recent additions, with topics as categories.</p></div>
+    <div class="btn-row" style="margin-top:16px">
+      <a class="btn primary" href="/feed.xml"><Rss size={16} /> Subscribe via RSS</a>
+      <a class="btn" href="/browse">Browse the catalogue</a>
+    </div>
+  </div>
+</Base>

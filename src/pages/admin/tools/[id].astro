@@ -2,8 +2,10 @@
 import Base from '../../../layouts/Base.astro';
 import ToolForm from '../../../components/ToolForm.astro';
 import KindBadge from '../../../components/KindBadge.astro';
+import Monogram from '../../../components/Monogram.astro';
 import { deleteTool, getToolById, setStatus, updateTool, type ToolInput } from '../../../lib/db.ts';
 import { parseToolForm } from '../../../lib/forms.ts';
+import { ArrowUpRight, CircleCheck, Radar, Trash } from '../../../components/icons.ts';
 
 const id = Number(Astro.params.id);
 let tool = Number.isInteger(id) ? getToolById(id) : undefined;
@@ -38,40 +40,47 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
-const statusLabel = { published: 'Published', pending: 'Waiting for review', rejected: 'Rejected' }[tool.status];
+const status = {
+  published: { label: 'Published', cls: 'new' },
+  pending: { label: 'Waiting for review', cls: 'accent' },
+  rejected: { label: 'Rejected', cls: 'danger' },
+}[tool.status];
 ---
-<Base title={`Edit ${tool.name}`}>
-  <div class="wrap section" style="max-width:820px">
-    <p class="small"><a href="/admin">← Admin</a></p>
-    <h1>{tool.name} <KindBadge kind={tool.kind} /></h1>
-    <p class="muted">
-      {statusLabel}
-      {tool.status === 'published' && <> · <a href={`/tools/${tool.slug}`}>View public page</a></>}
-    </p>
-    {saved && <p class="notice" role="status">Saved.</p>}
+<Base title={`Edit ${tool.name}`} nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: tool.name }]}>
+  <div style="max-width:880px">
+    <header class="tool-hero" style="margin-bottom:20px;padding-bottom:20px">
+      <Monogram name={tool.name} size={56} />
+      <div class="tool-hero-main">
+        <div class="badges"><span class={`badge ${status.cls}`}>{status.label}</span><KindBadge kind={tool.kind} /></div>
+        <h1>{tool.name}</h1>
+        <div class="tool-hero-actions">
+          {tool.status !== 'published' && (
+            <form method="post"><input type="hidden" name="_action" value="publish" /><button class="btn primary"><CircleCheck size={16} /> Publish</button></form>
+          )}
+          {tool.status === 'published' && (
+            <>
+              <a class="btn" href={`/tools/${tool.slug}`}>View public page <ArrowUpRight size={15} /></a>
+              <form method="post"><input type="hidden" name="_action" value="unpublish" /><button class="btn">Unpublish</button></form>
+            </>
+          )}
+          {tool.status !== 'rejected' && (
+            <form method="post"><input type="hidden" name="_action" value="reject" /><button class="btn">Reject</button></form>
+          )}
+          <form method="post" onsubmit="return confirm('Delete this tool permanently? Rejecting keeps it out of future scans; deleting does not.')">
+            <input type="hidden" name="_action" value="delete" /><button class="btn danger"><Trash size={15} /> Delete</button>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    {saved && <div class="alert success" role="status"><CircleCheck size={16} /> Changes saved.</div>}
     {tool.foundNote && (
-      <div class="notice">
-        <strong>Why the scanner suggested this:</strong> {tool.foundNote}
-        {tool.foundVia && <> (<a href={tool.foundVia} rel="noopener">found here</a>)</>}
+      <div class="alert info">
+        <Radar size={16} />
+        <span><strong>Why the scanner suggested this:</strong> {tool.foundNote}{tool.foundVia && <> · <a class="link" href={tool.foundVia} rel="noopener" target="_blank">source</a></>}</span>
       </div>
     )}
 
     <ToolForm value={value} errors={errors} submitLabel="Save changes" />
-
-    <hr style="border:0;border-top:1px solid var(--border);margin:2rem 0" />
-    <div class="btn-row">
-      {tool.status !== 'published' && (
-        <form method="post"><input type="hidden" name="_action" value="publish" /><button class="btn primary">Publish</button></form>
-      )}
-      {tool.status === 'published' && (
-        <form method="post"><input type="hidden" name="_action" value="unpublish" /><button class="btn">Unpublish</button></form>
-      )}
-      {tool.status !== 'rejected' && (
-        <form method="post"><input type="hidden" name="_action" value="reject" /><button class="btn">Reject</button></form>
-      )}
-      <form method="post" onsubmit="return confirm('Delete this tool permanently? Rejecting keeps it out of future scans; deleting does not.')">
-        <input type="hidden" name="_action" value="delete" /><button class="btn danger">Delete</button>
-      </form>
-    </div>
   </div>
 </Base>

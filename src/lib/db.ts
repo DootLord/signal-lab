@@ -251,6 +251,29 @@ export function tagCounts() {
   ).all() as { tag: string; count: number }[];
 }
 
+export function siteStats() {
+  const d = getDb();
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const t = d.prepare(
+    `SELECT COUNT(*) AS total, coalesce(SUM(kind = 'gem'), 0) AS gems, coalesce(SUM(kind = 'new'), 0) AS fresh,
+       coalesce(SUM(published_at >= ?), 0) AS recent
+     FROM tools WHERE status = 'published'`,
+  ).get(since) as { total: number; gems: number; fresh: number; recent: number };
+  const { topics } = d.prepare(
+    `SELECT COUNT(DISTINCT tag) AS topics FROM tool_tags JOIN tools ON tools.id = tool_id WHERE tools.status = 'published'`,
+  ).get() as { topics: number };
+  const { pending } = d.prepare(`SELECT COUNT(*) AS pending FROM tools WHERE status = 'pending'`).get() as { pending: number };
+  return { ...t, topics, pending };
+}
+
+/** A gem that changes once a week, the same for every visitor. */
+export function featuredGem() {
+  const ids = (getDb().prepare(`SELECT id FROM tools WHERE status = 'published' AND kind = 'gem' ORDER BY id`).all() as { id: number }[]).map((r) => r.id);
+  if (!ids.length) return undefined;
+  const week = Math.floor(Date.now() / (7 * 86_400_000));
+  return getToolById(ids[week % ids.length]);
+}
+
 /** Every URL and slug already known (any status), so the scanner never re-suggests a rejected tool. */
 export function knownIdentifiers() {
   const rows = getDb().prepare('SELECT slug, website, repo, found_via FROM tools').all() as {

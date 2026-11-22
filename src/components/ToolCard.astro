@@ -1,15 +1,31 @@
 ---
 import type { Tool } from '../lib/db.ts';
+import { host } from '../lib/format.ts';
 import KindBadge from './KindBadge.astro';
+import Monogram from './Monogram.astro';
+import { ArrowUpRight, Repeat } from './icons.ts';
 
 interface Props { tool: Tool; }
 const { tool } = Astro.props;
+const source = tool.website ?? tool.repo;
 ---
 <article class="card">
-  <h3><a href={`/tools/${tool.slug}`}>{tool.name}</a> <KindBadge kind={tool.kind} /></h3>
-  <p>{tool.tagline}</p>
-  {tool.replaces && <p class="replaces">Instead of: {tool.replaces}</p>}
-  <div class="tags">
-    {tool.tags.slice(0, 4).map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+  <div class="card-top">
+    <Monogram name={tool.name} />
+    <div class="card-title">
+      <h3><a href={`/tools/${tool.slug}`}>{tool.name}</a></h3>
+      {source && <div class="host">{host(source)}</div>}
+    </div>
+    <KindBadge kind={tool.kind} />
+  </div>
+  <p class="card-tagline">{tool.tagline}</p>
+  {tool.replaces && (
+    <div class="card-instead"><Repeat size={14} /><span><b>Instead of</b> {tool.replaces}</span></div>
+  )}
+  <div class="card-foot">
+    <div class="tags">
+      {tool.tags.slice(0, 3).map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+    </div>
+    <ArrowUpRight class="card-arrow" size={18} />
   </div>
 </article>

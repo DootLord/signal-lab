@@ -1,0 +1,10 @@
+---
+import { hue } from '../lib/format.ts';
+
+interface Props { name: string; size?: number; }
+const { name, size } = Astro.props;
+const letters = name.replace(/\(.*?\)/g, '').trim().split(/[\s._-]+/).filter(Boolean);
+const initials = (letters.length > 1 ? letters[0][0] + letters[1][0] : name.slice(0, 2)).toUpperCase();
+const style = `--h:${hue(name)}${size ? `;--size:${size}px` : ''}`;
+---
+<span class="monogram" style={style} aria-hidden="true">{initials}</span>

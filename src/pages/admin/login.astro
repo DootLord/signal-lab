@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { adminEnabled, checkPassword, isHttps, startSession } from '../../lib/auth.ts';
+import { CircleAlert, Lock } from '../../components/icons.ts';
 
 // Basic brute-force brake: per-IP failure count with a cooldown.
 const failures: Map<string, { count: number; until: number }> = ((globalThis as any).__slLoginFailures ??= new Map());
@@ -25,24 +26,30 @@ if (Astro.request.method === 'POST') {
     }
     const count = (entry?.count ?? 0) + 1;
     failures.set(ip, { count, until: count >= 5 ? Date.now() + 5 * 60_000 : 0 });
-    error = 'Wrong password.';
+    error = 'That password isn’t right.';
   }
 }
 ---
-<Base title="Admin sign in">
-  <div class="wrap narrow-page">
-    <h1>Admin</h1>
-    {adminEnabled() ? (
-      <form method="post" class="stack">
-        {error && <div class="errors" role="alert">{error}</div>}
-        <div class="field">
-          <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
-        </div>
-        <button class="btn primary" type="submit">Sign in</button>
-      </form>
-    ) : (
-      <p class="notice">Admin is disabled. Set an <code>ADMIN_PASSWORD</code> environment variable (8+ characters) and restart the app.</p>
-    )}
+<Base title="Sign in" crumbs={[{ label: 'Admin sign in' }]}>
+  <div class="auth-wrap">
+    <div class="panel auth-card">
+      <div class="panel-body">
+        <span class="brand-mark"><Lock size={18} /></span>
+        <h1>Admin sign in</h1>
+        <p>Review scanner suggestions and manage the catalogue.</p>
+        {adminEnabled() ? (
+          <form method="post">
+            {error && <div class="alert error" role="alert"><CircleAlert size={16} />{error}</div>}
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
+            </div>
+            <button class="btn primary" type="submit" style="width:100%">Sign in</button>
+          </form>
+        ) : (
+          <div class="alert info"><CircleAlert size={16} /><span>Admin is disabled. Set an <code>ADMIN_PASSWORD</code> environment variable (8+ characters) and restart the app.</span></div>
+        )}
+      </div>
+    </div>
   </div>
 </Base>

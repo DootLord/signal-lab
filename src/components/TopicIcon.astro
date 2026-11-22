@@ -1,0 +1,24 @@
+---
+import * as I from './icons.ts';
+
+interface Props { tag: string; size?: number; }
+const { tag, size = 18 } = Astro.props;
+
+const map: Record<string, typeof I.Hash> = {
+  cli: I.Terminal, terminal: I.Terminal, shell: I.Terminal,
+  testing: I.FlaskConical, evaluation: I.Gauge, performance: I.Gauge, benchmarking: I.Gauge,
+  ai: I.Sparkles, llm: I.Bot, 'coding-assistant': I.Bot,
+  database: I.Database, databases: I.Database, sqlite: I.Database, postgres: I.Database,
+  devops: I.ServerCog, ansible: I.ServerCog, infrastructure: I.Server, 'web-server': I.Server,
+  kubernetes: I.Container, docker: I.Container,
+  security: I.Shield, https: I.Lock,
+  git: I.GitBranch, ci: I.Workflow, 'github-actions': I.Workflow, automation: I.Workflow,
+  javascript: I.Braces, typescript: I.Braces, python: I.FileCode, go: I.Code, golang: I.Code, rust: I.Code, java: I.Code,
+  runtime: I.Cpu, productivity: I.Zap, search: I.Search, email: I.Mail,
+  api: I.Network, http: I.Globe, dependencies: I.Package, 'package-manager': I.Package,
+  linting: I.Check, formatting: I.Check, build: I.Hammer, environment: I.Settings, 'version-manager': I.Layers,
+  backups: I.Cloud, 'local-dev': I.Laptop,
+};
+const Icon = map[tag] ?? I.Hash;
+---
+<Icon size={size} />

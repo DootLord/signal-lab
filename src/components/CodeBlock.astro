@@ -1,0 +1,20 @@
+---
+import { Check, Copy } from './icons.ts';
+
+interface Props { code: string; label?: string; }
+const { code, label = 'Terminal' } = Astro.props;
+const lines = code.split('\n').map((text, i, all) => ({
+  text: i < all.length - 1 ? text + '\n' : text,
+  comment: /^\s*(#|\/\/)/.test(text),
+}));
+---
+<div class="code">
+  <div class="code-head">
+    <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span>{label}</span>
+    <button type="button" class="copy-btn" data-copy aria-label="Copy commands">
+      <Copy size={12} class="icon-copy" /><Check size={12} class="icon-check" /><span data-copy-label>Copy</span>
+    </button>
+  </div>
+  <pre><code>{lines.map((line) => <span class:list={{ comment: line.comment }}>{line.text}</span>)}</code></pre>
+</div>
