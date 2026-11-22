@@ -1,6 +1,9 @@
 services:
   signal-lab:
-    build: .
+    # Built by .github/workflows/docker.yml. The server only pulls it, because
+    # the build tools need AVX2, which the server's CPU doesn't have.
+    image: ${SIGNAL_LAB_IMAGE:-ghcr.io/dootlord/signal-lab:latest}
+    pull_policy: always
     restart: unless-stopped
     expose:
       - "3000"
@@ -8,33 +11,14 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      # Scanner model. Defaults to the Ollama container below; to use a hosted
-      # provider instead, set its OpenAI-compatible URL, model name and key.
-      SCAN_LLM_URL: ${SCAN_LLM_URL:-http://ollama:11434/v1}
-      SCAN_LLM_MODEL: ${SCAN_LLM_MODEL:-gemma3:4b}
+      # Scanner model: any OpenAI-compatible API. Defaults to OpenAI.
       SCAN_LLM_KEY: ${SCAN_LLM_KEY:-}
+      SCAN_LLM_URL: ${SCAN_LLM_URL:-}
+      SCAN_LLM_MODEL: ${SCAN_LLM_MODEL:-}
       SCAN_BATCH_SIZE: ${SCAN_BATCH_SIZE:-}
       SCAN_MAX_SUGGESTIONS: ${SCAN_MAX_SUGGESTIONS:-}
     volumes:
       - signal-lab-data:/app/data
-    depends_on:
-      - ollama
-
-  # Self-hosted model server, reachable only from inside this stack.
-  # Do not give it a domain or public port: Ollama has no authentication.
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    environment:
-      OLLAMA_CONTEXT_LENGTH: "8192"   # room for a batch of candidates plus the reply
-      OLLAMA_KEEP_ALIVE: "5m"         # unload the model from RAM 5 minutes after a scan
-      OLLAMA_MAX_LOADED_MODELS: "1"
-      OLLAMA_NUM_PARALLEL: "1"
-    volumes:
-      - ollama-models:/root/.ollama
-    # Optional: cap memory so the model can never starve the rest of the server.
-    # mem_limit: 6g
 
 volumes:
   signal-lab-data:
-  ollama-models:

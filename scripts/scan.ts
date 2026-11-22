@@ -5,21 +5,22 @@
 //   node scripts/scan.ts            (Coolify scheduled task, e.g. daily)
 //   node scripts/scan.ts --dry-run  (list candidates only; no model call, nothing saved)
 //
-// Works with any OpenAI-compatible chat API. The default is a self-hosted Ollama
-// container (see docker-compose.yml); point it at OpenAI, OpenRouter, etc. by
-// changing SCAN_LLM_URL / SCAN_LLM_MODEL / SCAN_LLM_KEY.
+// Works with any OpenAI-compatible chat API: OpenAI by default, or OpenRouter, a
+// self-hosted Ollama, etc. via SCAN_LLM_URL / SCAN_LLM_MODEL / SCAN_LLM_KEY.
 //
-// Env: SCAN_LLM_URL (default http://ollama:11434/v1), SCAN_LLM_MODEL (default gemma3:4b),
-//      SCAN_LLM_KEY (only for hosted providers), SCAN_BATCH_SIZE (candidates per model call),
+// Env: SCAN_LLM_KEY (API key; not needed for a local Ollama), SCAN_LLM_URL (default
+//      https://api.openai.com/v1), SCAN_LLM_MODEL (default gpt-5-mini),
+//      SCAN_BATCH_SIZE (candidates per model call),
 //      SCAN_MAX_SUGGESTIONS (default 6), GITHUB_TOKEN (optional), DATABASE_PATH (same as the web app).
 import { z } from 'zod';
 import { createTool, finishScan, knownIdentifiers, normalizeUrl, slugify, startScan } from '../src/lib/db.ts';
 
-const LLM_URL = (process.env.SCAN_LLM_URL || 'http://ollama:11434/v1').replace(/\/$/, '');
-const LLM_MODEL = process.env.SCAN_LLM_MODEL || 'gemma3:4b';
+const LLM_URL = (process.env.SCAN_LLM_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+const LLM_MODEL = process.env.SCAN_LLM_MODEL || 'gpt-5-mini';
 const LLM_KEY = process.env.SCAN_LLM_KEY || '';
 // Small local models do better with a few candidates at a time; hosted models can take them all at once.
 const BATCH_SIZE = Math.min(Math.max(Number(process.env.SCAN_BATCH_SIZE) || (LLM_KEY ? 24 : 3), 1), 24);
+const IS_OPENAI = new URL(LLM_URL).hostname === 'api.openai.com';
 const README_CHARS = LLM_KEY ? 3500 : 1200;
 const MAX_SUGGESTIONS = Math.min(Math.max(Number(process.env.SCAN_MAX_SUGGESTIONS) || 6, 1), 15);
 const MAX_CANDIDATES = 24;
@@ -210,8 +211,8 @@ async function draftCards(batch: Candidate[]): Promise<Pick[]> {
     signal: AbortSignal.timeout(30 * 60_000),
     body: JSON.stringify({
       model: LLM_MODEL,
-      temperature: 0.2,
-      max_tokens: 4000,
+      // OpenAI's reasoning models reject max_tokens and custom temperatures; other APIs expect max_tokens.
+      ...(IS_OPENAI ? { max_completion_tokens: 16000 } : { max_tokens: LLM_KEY ? 8000 : 4000, temperature: 0.2 }),
       response_format: { type: 'json_schema', json_schema: { name: 'picks', strict: true, schema: reportSchema } },
       messages: [
         { role: 'system', content: SYSTEM },
@@ -239,6 +240,7 @@ async function main() {
   const runId = DRY_RUN ? 0 : startScan();
   let candidateCount = 0;
   try {
+    if (!DRY_RUN && IS_OPENAI && !LLM_KEY) throw new Error('Set SCAN_LLM_KEY to your OpenAI API key (or point SCAN_LLM_URL at another provider).');
     const known = knownIdentifiers();
     const sources = await Promise.allSettled([newOnGithub(), gemsOnGithub(), showHn()]);
     for (const s of sources) if (s.status === 'rejected') console.warn('Source failed:', s.reason instanceof Error ? s.reason.message : s.reason);
@@ -259,7 +261,7 @@ async function main() {
     if (!candidates.length) { finishScan(runId, 0, 0); return; }
 
     await Promise.all(candidates.map(attachReadme));
-    await ensureOllamaModel();
+    if (!LLM_KEY) await ensureOllamaModel();
 
     const picks: Pick[] = [];
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {

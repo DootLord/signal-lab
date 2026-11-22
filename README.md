@@ -4,9 +4,9 @@ A site for finding developer tools: what's **new** and moving, and the **gems** 
 
 - **Public site:** home page, browse and search with tag filters, a page for each tool, and an RSS feed (`/feed.xml`).
 - **Admin** (`/admin`, password protected): add and edit tools, and review what the scanner suggests.
-- **Scanner:** a scheduled job that collects candidates from GitHub and Hacker News, asks a self-hosted AI model to pick the best ones and draft cards, and saves them as *pending*. **Nothing is published until you approve it.**
+- **Scanner:** a scheduled job that collects candidates from GitHub and Hacker News, asks an AI model to pick the best ones and draft cards, and saves them as *pending*. **Nothing is published until you approve it.**
 
-Built with [Astro](https://astro.build) (server-rendered) and SQLite (`node:sqlite`, built into Node 24). The scanner uses a small open model through Ollama, or any OpenAI-compatible API.
+Built with [Astro](https://astro.build) (server-rendered) and SQLite (`node:sqlite`, built into Node 24). The scanner uses any OpenAI-compatible model API (OpenAI by default).
 
 ## Each tool card
 
@@ -37,51 +37,43 @@ Data is stored in `./data/signal-lab.sqlite` (set `DATABASE_PATH` to change it).
 
 ## Deploying on Coolify
 
-The stack has two containers: the site, and [Ollama](https://ollama.com) running a small open model for the scanner. Ollama is only reachable inside the stack.
+The image is built by GitHub Actions ([.github/workflows/docker.yml](.github/workflows/docker.yml)) on every push to `main` and published to `ghcr.io/dootlord/signal-lab`. Coolify only pulls it. The build tools are precompiled binaries that need AVX2, which the server's CPU (a Xeon E5-1620 v2) doesn't have; building there crashes with exit code 132. The running site is plain Node and works fine on that CPU.
 
-1. **New resource → Git repository**, build pack **Docker Compose** (it uses `docker-compose.yml`).
-2. Give the **signal-lab** service your domain, on port **3000**. Coolify's proxy handles HTTPS. **Don't** give the `ollama` service a domain: Ollama has no authentication.
+0. **One-time setup:** push to `main` and wait for the **Build image** workflow to finish. The image is then listed under your GitHub profile → Packages. Either make the package public (package settings → Change visibility), or add `ghcr.io` in Coolify → Keys & Tokens → Registries, with a GitHub token that has the `read:packages` scope.
+1. **New resource → Git repository**, build pack **Docker Compose** (it uses `docker-compose.yml`). In the resource's settings, turn **off** auto-deploy on push. GitHub Actions triggers the deploy instead, once the image is ready (step 6).
+2. Give the **signal-lab** service your domain, on port **3000**. Coolify's proxy handles HTTPS.
 3. **Environment variables:**
 
    | Variable | Required | Purpose |
    |---|---|---|
    | `ADMIN_PASSWORD` | yes | Admin sign-in (8+ characters). Admin is disabled if unset. |
+   | `SCAN_LLM_KEY` | for the scanner | API key for the scanner's model (OpenAI by default) |
+   | `SCAN_LLM_MODEL` | no | Model name (default `gpt-5-mini`) |
+   | `SCAN_LLM_URL` | no | OpenAI-compatible API base URL (default `https://api.openai.com/v1`) |
    | `GITHUB_TOKEN` | no | Any read-only token; raises GitHub's API rate limits for the scanner |
    | `SESSION_SECRET` | no | Signs admin sessions. If unset, derived from `ADMIN_PASSWORD`, so changing the password signs everyone out. |
-   | `SCAN_LLM_MODEL` | no | Ollama model for the scanner (default `gemma3:4b`, see below) |
    | `SCAN_MAX_SUGGESTIONS` | no | Maximum suggestions per run (default 6, max 15) |
 
-   The volumes for the database (`/app/data`) and the downloaded models are declared in the compose file, so they survive deploys.
+   The database volume (`/app/data`) is declared in the compose file, so it survives deploys.
 4. Deploy. `/health` is the site's health check.
 5. **Scheduled task** (Coolify → your app → Scheduled Tasks), on the `signal-lab` container:
    - Command: `node scripts/scan.ts`
-   - Frequency: `0 4 * * *` (daily at 04:00, a quiet time for the server) or `0 4 * * 1` (weekly)
+   - Frequency: `0 7 * * *` (daily) or `0 7 * * 1` (weekly)
 
-   The first run downloads the model, about 3 GB for the default. Each run's result appears under **Scanner runs** in `/admin`, and its suggestions appear in the review queue.
+   Each run's result appears under **Scanner runs** in `/admin`, and its suggestions appear in the review queue.
+6. **Automatic deploys:** in Coolify, copy the resource's **Deploy Webhook** URL, and create an API token under Keys & Tokens → API tokens. Add both to the GitHub repo as Actions secrets named `COOLIFY_WEBHOOK` and `COOLIFY_TOKEN`. Each push now builds the image and then redeploys. Without these secrets, press **Redeploy** in Coolify after the workflow finishes.
 
-### Choosing a model for your server
+### Choosing the scanner's model
 
-The scanner runs on the CPU. No GPU is needed. Pick a model by how much RAM you can spare during a scan:
+The scanner works with any OpenAI-compatible API:
 
-| Free RAM | `SCAN_LLM_MODEL` | Notes |
+| Provider | `SCAN_LLM_URL` | Notes |
 |---|---|---|
-| ~3 GB | `qwen2.5:3b` | Lightest option that still writes decent cards |
-| ~5 GB | `gemma3:4b` (default) | Good balance of quality and speed |
-| ~10 GB | `qwen2.5:7b` or `gemma3:12b` | Noticeably better judgement, slower |
+| OpenAI (default) | leave unset | Use a small, cheap model. Each run is a single request of roughly 25–35k input tokens. |
+| OpenRouter | `https://openrouter.ai/api/v1` | One key for many providers' models |
+| Ollama on a machine with AVX2 | `http://<host>:11434/v1` | Free, but needs ~5 GB RAM. Leave `SCAN_LLM_KEY` unset: the scanner then sends 3 candidates at a time and downloads the model on first use. |
 
-The model is loaded only while a scan runs and unloaded 5 minutes afterwards, so the RAM is borrowed, not reserved. On a typical 4–8 core server, expect a run to take roughly 10–30 minutes. That's fine for a nightly job. To cap the model's memory, uncomment `mem_limit` in `docker-compose.yml`.
-
-### Using a hosted model instead
-
-The scanner works with any OpenAI-compatible API. If the local model's picks aren't good enough, or the server needs the RAM back, set these three variables and the local model is no longer used:
-
-```
-SCAN_LLM_URL=https://api.openai.com/v1     # or https://openrouter.ai/api/v1, etc.
-SCAN_LLM_MODEL=<the provider's model name>
-SCAN_LLM_KEY=<API key>
-```
-
-With a key set, the scanner sends all candidates in a single request. A small, cheap model from these providers costs very little per run at this volume. You can then remove the `ollama` service from the compose file.
+Check your provider's pricing page for current rates. At this volume, a small model should cost very little per run.
 
 ## The scanner
 
@@ -92,10 +84,10 @@ With a key set, the scanner sends all candidates in a single request. A small, c
    - mature (2+ years), actively maintained GitHub repos, from two topics that rotate daily (cli, testing, ansible, kubernetes, python and more). This is the source for gems.
    - popular Show HN posts from the last 10 days
 2. **Skips** anything already in the database, including tools you've rejected, so they never come back.
-3. **Asks the model** to score each candidate and draft a card for any that score 6/10 or higher. It sends 3 candidates at a time for a local model, or all at once for a hosted one. The model sees a README excerpt for each repo. Links on the cards always come from GitHub or Hacker News data, never from the model.
+3. **Asks the model** to score each candidate and draft a card for any that score 6/10 or higher. The model sees a README excerpt for each repo. Links on the cards always come from GitHub or Hacker News data, never from the model.
 4. **Saves** the top `SCAN_MAX_SUGGESTIONS` picks as pending, each with its score and a note explaining why it was suggested.
 
-A small local model will sometimes misjudge a tool or write a clumsy card. That's what the review queue is for: edit it, reject it, or publish it. If a batch comes back malformed, the scanner skips it and carries on.
+The model will sometimes misjudge a tool or write a clumsy card. That's what the review queue is for: edit it, reject it, or publish it. If the model's reply is malformed, the scanner skips it rather than saving anything broken.
 
 Run `node scripts/scan.ts --dry-run` to see the candidates without calling the model or saving anything.
 
