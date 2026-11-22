@@ -19,6 +19,8 @@ COPY --from=build /app/dist ./dist
 # The scanner runs from source with Node's built-in TypeScript support.
 COPY src/lib ./src/lib
 COPY scripts ./scripts
+# Long-form tool write-ups used to seed and fill in the database.
+COPY content ./content
 RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 EXPOSE 3000

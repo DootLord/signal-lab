@@ -4,9 +4,12 @@ import ToolCard from '../../components/ToolCard.astro';
 import KindBadge from '../../components/KindBadge.astro';
 import Monogram from '../../components/Monogram.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
-import { getPublishedBySlug, related } from '../../lib/db.ts';
-import { formatDate, host } from '../../lib/format.ts';
-import { ArrowUpRight, BookOpen, Clock, FolderGit2, Globe, Info, Pencil, Repeat, Terminal } from '../../components/icons.ts';
+import { getPublishedBySlug, publishedSlugs, related, slugify } from '../../lib/db.ts';
+import { formatDate, host, lines, pairs } from '../../lib/format.ts';
+import { renderInline, renderMarkdown } from '../../lib/markdown.ts';
+import {
+  ArrowRight, ArrowUpRight, BookOpen, Check, CircleAlert, CircleCheck, Clock, FolderGit2, Globe, Info, Layers, Pencil, Repeat, Terminal, Zap,
+} from '../../components/icons.ts';
 
 const tool = getPublishedBySlug(Astro.params.slug ?? '');
 if (!tool) return new Response(null, { status: 404, statusText: 'Not found' });
@@ -17,6 +20,25 @@ const links = [
   tool.docs && { href: tool.docs, label: 'Documentation', Icon: BookOpen },
 ].filter((l): l is { href: string; label: string; Icon: typeof Globe } => !!l);
 const primary = links[0];
+
+const features = pairs(tool.features);
+const strengths = lines(tool.strengths);
+const limitations = lines(tool.limitations);
+const slugs = publishedSlugs();
+const alternatives = pairs(tool.alternatives).map((a) => {
+  const slug = slugify(a.title);
+  return { ...a, href: a.title && slug !== tool.slug && slugs.has(slug) ? `/tools/${slug}` : null };
+});
+const bodyHtml = tool.body ? renderMarkdown(tool.body) : '';
+
+const toc = [
+  { id: 'overview', label: 'Overview' },
+  features.length && { id: 'features', label: 'Key features' },
+  bodyHtml && { id: 'in-depth', label: 'In depth' },
+  (strengths.length || limitations.length) && { id: 'trade-offs', label: 'Strengths & watch-outs' },
+  tool.tryIt && { id: 'try-it', label: 'Try it' },
+  alternatives.length && { id: 'alternatives', label: 'Alternatives' },
+].filter((x): x is { id: string; label: string } => !!x);
 ---
 <Base title={tool.name} description={`${tool.name}: ${tool.tagline}`} crumbs={[{ label: 'Browse', href: '/browse' }, { label: tool.name }]}>
   <header class="tool-hero">
@@ -38,7 +60,7 @@ const primary = links[0];
 
   <div class="tool-layout">
     <div>
-      <section class="panel">
+      <section class="panel" id="overview">
         <div class="panel-head"><Info size={17} /><h2>Overview</h2></div>
         <div class="panel-body prose"><p>{tool.description}</p></div>
       </section>
@@ -50,10 +72,67 @@ const primary = links[0];
         </div>
       )}
 
+      {features.length > 0 && (
+        <section class="panel" id="features">
+          <div class="panel-head"><Zap size={17} /><h2>Key features</h2></div>
+          <div class="panel-body">
+            <ul class="feature-list">
+              {features.map((f) => (
+                <li>
+                  <span class="feature-check"><Check size={14} stroke-width={2.6} /></span>
+                  <div>{f.title && <strong>{f.title}</strong>}<p set:html={renderInline(f.text)} /></div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {bodyHtml && (
+        <section class="panel" id="in-depth">
+          <div class="panel-head"><BookOpen size={17} /><h2>In depth</h2></div>
+          <div class="panel-body prose md" set:html={bodyHtml} />
+        </section>
+      )}
+
+      {(strengths.length > 0 || limitations.length > 0) && (
+        <div class="pros-cons" id="trade-offs">
+          {strengths.length > 0 && (
+            <section class="callout pros">
+              <h3><CircleCheck size={15} /> Strengths</h3>
+              <ul>{strengths.map((s) => <li set:html={renderInline(s)} />)}</ul>
+            </section>
+          )}
+          {limitations.length > 0 && (
+            <section class="callout cons">
+              <h3><CircleAlert size={15} /> Watch out for</h3>
+              <ul>{limitations.map((s) => <li set:html={renderInline(s)} />)}</ul>
+            </section>
+          )}
+        </div>
+      )}
+
       {tool.tryIt && (
-        <section class="panel">
+        <section class="panel" id="try-it">
           <div class="panel-head"><Terminal size={17} /><h2>Try it in a few minutes</h2></div>
           <div class="panel-body"><CodeBlock code={tool.tryIt} /></div>
+        </section>
+      )}
+
+      {alternatives.length > 0 && (
+        <section class="panel" id="alternatives">
+          <div class="panel-head"><Layers size={17} /><h2>Alternatives</h2></div>
+          <div class="alt-list">
+            {alternatives.map((a) => (
+              <div class="alt">
+                <div class="alt-name">
+                  {a.href ? <a class="link" href={a.href}>{a.title}</a> : <strong>{a.title}</strong>}
+                  {a.href && <span class="badge accent">In catalogue</span>}
+                </div>
+                <p set:html={renderInline(a.text)} />
+              </div>
+            ))}
+          </div>
         </section>
       )}
     </div>
@@ -63,12 +142,19 @@ const primary = links[0];
         <div class="panel-body">
           <dl class="facts">
             <div><dt>Type</dt><dd><KindBadge kind={tool.kind} /></dd></div>
+            {tool.license && <div><dt>License</dt><dd>{tool.license}</dd></div>}
+            {tool.language && <div><dt>Written in</dt><dd>{tool.language}</dd></div>}
             <div><dt>Added</dt><dd>{formatDate(tool.publishedAt ?? tool.createdAt)}</dd></div>
             <div><dt>Last updated</dt><dd>{formatDate(tool.updatedAt)}</dd></div>
-            {primary && <div><dt>Home</dt><dd>{host(primary.href)}</dd></div>}
           </dl>
         </div>
       </section>
+      {toc.length > 2 && (
+        <nav class="panel toc" aria-label="On this page">
+          <div class="panel-head"><h2>On this page</h2></div>
+          <ul>{toc.map((t) => <li><a href={`#${t.id}`}><ArrowRight size={13} /> {t.label}</a></li>)}</ul>
+        </nav>
+      )}
       {links.length > 0 && (
         <section class="panel">
           <div class="panel-head"><h2>Links</h2></div>

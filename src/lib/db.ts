@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { seedTools } from './seed.ts';
+import { loadDetails } from './content.ts';
 
 export const kinds = ['new', 'gem'] as const;
 export type Kind = (typeof kinds)[number];
@@ -24,9 +25,21 @@ export type ToolInput = {
   docs: string | null;
   foundVia?: string | null;
   foundNote?: string | null;
+  // Long-form detail. List fields hold one item per line; features and
+  // alternatives use "Title: text". body is a small, safe Markdown subset.
+  features?: string;
+  body?: string;
+  strengths?: string;
+  limitations?: string;
+  alternatives?: string;
+  license?: string;
+  language?: string;
 };
 
-export type Tool = ToolInput & {
+export const detailFields = ['features', 'body', 'strengths', 'limitations', 'alternatives', 'license', 'language'] as const;
+export type Details = Record<(typeof detailFields)[number], string>;
+
+export type Tool = ToolInput & Details & {
   id: number;
   slug: string;
   status: Status;
@@ -40,6 +53,7 @@ type Row = {
   replaces: string; use_when: string; try_it: string; kind: Kind; status: Status;
   website: string | null; repo: string | null; docs: string | null;
   found_via: string | null; found_note: string | null;
+  features: string; body: string; strengths: string; limitations: string; alternatives: string; license: string; language: string;
   created_at: string; published_at: string | null; updated_at: string; tags: string | null;
 };
 
@@ -74,7 +88,31 @@ const migrations = [
      suggested INTEGER NOT NULL DEFAULT 0,
      error TEXT
    );`,
+  `ALTER TABLE tools ADD COLUMN features TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN body TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN strengths TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN limitations TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN alternatives TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN license TEXT NOT NULL DEFAULT '';
+   ALTER TABLE tools ADD COLUMN language TEXT NOT NULL DEFAULT '';
+   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
 ];
+
+/**
+ * One-time fill of the long-form fields from content/tools/<slug>.md for tools
+ * that don't have them yet (databases seeded before those fields existed).
+ * Never overwrites content edited in the admin.
+ */
+function applyContentDetails(d: DatabaseSync) {
+  const KEY = 'content_details_v1';
+  if (d.prepare('SELECT 1 FROM meta WHERE key = ?').get(KEY)) return;
+  const update = d.prepare(
+    `UPDATE tools SET features = ?, body = ?, strengths = ?, limitations = ?, alternatives = ?, license = ?, language = ?, updated_at = ?
+     WHERE slug = ? AND body = '' AND features = ''`,
+  );
+  for (const [slug, x] of loadDetails()) update.run(x.features, x.body, x.strengths, x.limitations, x.alternatives, x.license, x.language, now(), slug);
+  d.prepare('INSERT INTO meta (key, value) VALUES (?, ?)').run(KEY, now());
+}
 
 let db: DatabaseSync | undefined;
 
@@ -97,7 +135,11 @@ export function getDb(): DatabaseSync {
     }
   }
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM tools').get() as { n: number };
-  if (n === 0) for (const tool of seedTools) createTool(tool, 'published');
+  if (n === 0) {
+    const details = loadDetails();
+    for (const tool of seedTools) createTool({ ...tool, ...details.get(slugify(tool.name)) }, 'published');
+  }
+  applyContentDetails(db);
   return db;
 }
 
@@ -131,6 +173,8 @@ function toTool(r: Row): Tool {
     id: r.id, slug: r.slug, name: r.name, tagline: r.tagline, description: r.description,
     replaces: r.replaces, useWhen: r.use_when, tryIt: r.try_it, kind: r.kind, status: r.status,
     website: r.website, repo: r.repo, docs: r.docs, foundVia: r.found_via, foundNote: r.found_note,
+    features: r.features, body: r.body, strengths: r.strengths, limitations: r.limitations,
+    alternatives: r.alternatives, license: r.license, language: r.language,
     createdAt: r.created_at, publishedAt: r.published_at, updatedAt: r.updated_at,
     tags: r.tags ? r.tags.split(',').sort() : [],
   };
@@ -153,17 +197,20 @@ function setTags(id: number, tags: string[]) {
   for (const tag of tags.map(normalizeTag).filter(Boolean).slice(0, 8)) insert.run(id, tag);
 }
 
+const detailValues = (input: ToolInput) => detailFields.map((f) => input[f] ?? '');
+
 export function createTool(input: ToolInput, status: Status): Tool {
   const d = getDb();
   const ts = now();
   const result = d.prepare(
     `INSERT INTO tools (slug, name, tagline, description, replaces, use_when, try_it, kind, status,
-       website, repo, docs, found_via, found_note, created_at, published_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       website, repo, docs, found_via, found_note, features, body, strengths, limitations, alternatives, license, language,
+       created_at, published_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     uniqueSlug(input.name), input.name, input.tagline, input.description, input.replaces, input.useWhen,
     input.tryIt, input.kind, status, input.website, input.repo, input.docs, input.foundVia ?? null,
-    input.foundNote ?? null, ts, status === 'published' ? ts : null, ts,
+    input.foundNote ?? null, ...detailValues(input), ts, status === 'published' ? ts : null, ts,
   );
   const id = Number(result.lastInsertRowid);
   setTags(id, input.tags);
@@ -175,11 +222,12 @@ export function updateTool(id: number, input: ToolInput): Tool | undefined {
   if (!existing) return undefined;
   getDb().prepare(
     `UPDATE tools SET slug = ?, name = ?, tagline = ?, description = ?, replaces = ?, use_when = ?, try_it = ?,
-       kind = ?, website = ?, repo = ?, docs = ?, updated_at = ? WHERE id = ?`,
+       kind = ?, website = ?, repo = ?, docs = ?, features = ?, body = ?, strengths = ?, limitations = ?,
+       alternatives = ?, license = ?, language = ?, updated_at = ? WHERE id = ?`,
   ).run(
     existing.name === input.name ? existing.slug : uniqueSlug(input.name, id), input.name, input.tagline,
     input.description, input.replaces, input.useWhen, input.tryIt, input.kind, input.website, input.repo,
-    input.docs, now(), id,
+    input.docs, ...detailValues(input), now(), id,
   );
   setTags(id, input.tags);
   return getToolById(id);
@@ -301,4 +349,9 @@ export function recentScans(limit = 10) {
   return getDb().prepare('SELECT * FROM scan_runs ORDER BY id DESC LIMIT ?').all(limit) as {
     id: number; started_at: string; finished_at: string | null; candidates: number; suggested: number; error: string | null;
   }[];
+}
+
+/** Slugs of every published tool, for linking alternatives that are also in the catalogue. */
+export function publishedSlugs() {
+  return new Set((getDb().prepare(`SELECT slug FROM tools WHERE status = 'published'`).all() as { slug: string }[]).map((r) => r.slug));
 }

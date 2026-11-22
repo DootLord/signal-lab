@@ -58,6 +58,35 @@ const { value = {}, errors = [], submitLabel, cancelHref = '/admin' } = Astro.pr
     </div>
   </div>
   <div class="form-section">
+    <h3>In depth</h3>
+    <div class="field">
+      <label for="features">Key features <span class="hint">· one per line, as “Title: what it does”</span></label>
+      <textarea id="features" name="features" maxlength="3000" rows="6">{value.features ?? ''}</textarea>
+    </div>
+    <div class="field">
+      <label for="body">Write-up <span class="hint">· how it works, workflows, examples. Supports ### headings, lists, ``` code blocks, `code`, **bold**, [links](https://…)</span></label>
+      <textarea id="body" name="body" class="mono" maxlength="12000" rows="16">{value.body ?? ''}</textarea>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="strengths">Strengths <span class="hint">· one per line</span></label>
+        <textarea id="strengths" name="strengths" maxlength="2000" rows="5">{value.strengths ?? ''}</textarea>
+      </div>
+      <div class="field">
+        <label for="limitations">Watch out for <span class="hint">· one per line</span></label>
+        <textarea id="limitations" name="limitations" maxlength="2000" rows="5">{value.limitations ?? ''}</textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label for="alternatives">Alternatives <span class="hint">· one per line, as “Name: how it compares”</span></label>
+      <textarea id="alternatives" name="alternatives" maxlength="2000" rows="4">{value.alternatives ?? ''}</textarea>
+    </div>
+    <div class="form-grid">
+      <div class="field" style="margin-bottom:0"><label for="license">License</label><input id="license" name="license" type="text" maxlength="60" placeholder="e.g. MIT" value={value.license ?? ''} /></div>
+      <div class="field" style="margin-bottom:0"><label for="language">Written in</label><input id="language" name="language" type="text" maxlength="60" placeholder="e.g. Rust" value={value.language ?? ''} /></div>
+    </div>
+  </div>
+  <div class="form-section">
     <h3>Links</h3>
     <div class="form-grid">
       <div class="field"><label for="website">Website</label><input id="website" name="website" type="url" placeholder="https://" value={value.website ?? ''} /></div>

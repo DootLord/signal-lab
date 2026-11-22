@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import PageHead from '../../components/PageHead.astro';
 import { createTool, knownIdentifiers, normalizeUrl, slugify } from '../../lib/db.ts';
+import { loadDetails } from '../../lib/content.ts';
 import { parseImport } from '../../lib/forms.ts';
 import { ArrowRight, CircleAlert, CircleCheck, Info } from '../../components/icons.ts';
 
@@ -17,7 +18,11 @@ if (Astro.request.method === 'POST') {
   const result = parseImport(raw);
   errors = result.errors;
   const known = knownIdentifiers();
-  for (const card of result.cards) {
+  const content = loadDetails();
+  for (const parsed of result.cards) {
+    // Cards without their own long-form detail pick it up from content/tools/<slug>.md if it exists.
+    const file = content.get(slugify(parsed.name));
+    const card = file && !parsed.body && !parsed.features ? { ...parsed, ...file } : parsed;
     const urls = [card.website, card.repo, card.foundVia].filter((u): u is string => !!u).map(normalizeUrl);
     if (known.slugs.has(slugify(card.name)) || urls.some((u) => known.urls.has(u))) {
       skipped.push(card.name);

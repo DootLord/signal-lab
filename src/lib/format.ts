@@ -37,6 +37,19 @@ export function topicLabel(tag: string) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** Splits a one-per-line list field into items. */
+export function lines(text: string | undefined) {
+  return (text ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+/** Splits "Title: text" lines (features, alternatives) into pairs. */
+export function pairs(text: string | undefined) {
+  return lines(text).map((l) => {
+    const i = l.indexOf(': ');
+    return i > 0 && i < 80 ? { title: l.slice(0, i).trim(), text: l.slice(i + 2).trim() } : { title: '', text: l };
+  });
+}
+
 export function plural(n: number, one: string, many = one + 's') {
   return `${n.toLocaleString('en')} ${n === 1 ? one : many}`;
 }

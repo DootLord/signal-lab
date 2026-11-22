@@ -514,3 +514,45 @@ details.disclosure summary { cursor: pointer; list-style: none; display: flex; a
 details.disclosure summary::-webkit-details-marker { display: none; }
 details.disclosure[open] summary svg { transform: rotate(90deg); }
 details.disclosure summary svg { transition: transform 0.15s; color: var(--muted); }
+
+/* ───────────────── Tool page: long-form detail ───────────────── */
+[id] { scroll-margin-top: calc(var(--topbar-h) + 16px); }
+.feature-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 12px; }
+.feature-list li { display: flex; gap: 12px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.feature-check { flex-shrink: 0; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--accent-wash); color: var(--accent); margin-top: 1px; }
+.feature-list strong { display: block; font-size: 0.92rem; margin-bottom: 2px; }
+.feature-list p { font-size: 0.88rem; color: var(--ink-2); line-height: 1.55; }
+
+.md { font-size: 0.97rem; }
+.md > * + * { margin-top: 14px; }
+.md h3 { font-size: 1.08rem; margin-top: 28px; }
+.md h3:first-child { margin-top: 0; }
+.md h4 { font-size: 0.95rem; margin-top: 20px; }
+.md ul, .md ol { padding-left: 22px; margin-bottom: 0; }
+.md li + li { margin-top: 6px; }
+.md li::marker { color: var(--accent); }
+.md strong { color: var(--ink); }
+.md .md-code { position: relative; }
+.md .md-code pre { padding: 14px 16px; }
+.md .md-code:has(.md-lang) pre { padding-top: 28px; }
+.md .md-lang { position: absolute; top: 6px; right: 10px; font-size: 0.68rem; font-family: var(--font-mono); color: #8c86a8; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pros-cons ul { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.pros-cons li + li { margin-top: 8px; }
+.callout.pros h3 svg { color: var(--new); }
+.callout.cons h3 svg { color: var(--gem); }
+.callout.pros li::marker { color: var(--new); }
+.callout.cons li::marker { color: var(--gem); }
+@media (max-width: 700px) { .pros-cons { grid-template-columns: minmax(0, 1fr); } }
+
+.alt-list { display: flex; flex-direction: column; }
+.alt { padding: 14px 24px; border-top: 1px solid var(--line); }
+.alt:first-child { border-top: 0; }
+.alt-name { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; font-family: var(--font-display); font-weight: 700; }
+.alt p { color: var(--ink-2); font-size: 0.9rem; }
+
+.toc ul { list-style: none; margin: 0; padding: 10px 12px; }
+.toc a { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; font-size: 0.88rem; color: var(--ink-2); }
+.toc a:hover { background: var(--accent-wash); color: var(--accent-ink); }
+.toc a svg { color: var(--faint); }

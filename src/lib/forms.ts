@@ -1,4 +1,41 @@
-import { kinds, normalizeTag, type Kind, type ToolInput } from './db.ts';
+import { kinds, normalizeTag, type Details, type Kind, type ToolInput } from './db.ts';
+
+/** Length limits for the long-form fields (characters). */
+export const DETAIL_LIMITS: Record<keyof Details, number> = {
+  features: 3000, body: 12000, strengths: 2000, limitations: 2000, alternatives: 2000, license: 60, language: 60,
+};
+
+const clean = (s: string, max: number) => s.replace(/\r\n/g, '\n').trim().slice(0, max);
+
+/** Normalises a list field: one item per line, bullets stripped, blank lines dropped. */
+function listText(s: string, max: number) {
+  return clean(s.replace(/\r\n/g, '\n').split('\n').map((l) => l.replace(/^\s*[-*•]\s+/, '').trim()).filter(Boolean).join('\n'), max);
+}
+
+/** Accepts the detail fields either as text or (from imports and the scanner) as arrays/objects. */
+export function normalizeDetails(src: Record<string, unknown>): Details {
+  const asList = (v: unknown, pair?: [string, string]) => {
+    if (Array.isArray(v)) {
+      return v.map((item) => {
+        if (pair && item && typeof item === 'object') {
+          const o = item as Record<string, unknown>;
+          return `${String(o[pair[0]] ?? '').trim()}: ${String(o[pair[1]] ?? '').trim()}`;
+        }
+        return String(item ?? '');
+      }).join('\n');
+    }
+    return typeof v === 'string' ? v : '';
+  };
+  return {
+    features: listText(asList(src.features, ['title', 'text']), DETAIL_LIMITS.features),
+    strengths: listText(asList(src.strengths), DETAIL_LIMITS.strengths),
+    limitations: listText(asList(src.limitations), DETAIL_LIMITS.limitations),
+    alternatives: listText(asList(src.alternatives, ['name', 'note']), DETAIL_LIMITS.alternatives),
+    body: clean(typeof src.body === 'string' ? src.body : '', DETAIL_LIMITS.body),
+    license: clean(typeof src.license === 'string' ? src.license : '', DETAIL_LIMITS.license),
+    language: clean(typeof src.language === 'string' ? src.language : '', DETAIL_LIMITS.language),
+  };
+}
 
 export type FormResult = { ok: true; value: ToolInput } | { ok: false; errors: string[]; value: Partial<ToolInput> };
 
@@ -47,6 +84,7 @@ export function parseImport(raw: string): ImportResult {
       tags: [...new Set((Array.isArray(c.tags) ? c.tags : []).map((t) => normalizeTag(String(t))).filter(Boolean))].slice(0, 8),
       website: links.website ?? null, repo: links.repo ?? null, docs: links.docs ?? null,
       foundVia: links.foundVia ?? null, foundNote: str(c.foundNote, 600) || null,
+      ...normalizeDetails(c),
     };
     const problems = [
       !card.name && 'a name', !card.tagline && 'a tagline', !card.description && 'a description', !card.tags.length && 'a tag',
@@ -75,6 +113,7 @@ export function parseToolForm(form: FormData): FormResult {
     website: links.website ?? null,
     repo: links.repo ?? null,
     docs: links.docs ?? null,
+    ...normalizeDetails(Object.fromEntries(['features', 'body', 'strengths', 'limitations', 'alternatives', 'license', 'language'].map((k) => [k, String(form.get(k) ?? '')]))),
   };
   if (!value.name) errors.push('Name is required.');
   if (!value.tagline) errors.push('Tagline is required.');

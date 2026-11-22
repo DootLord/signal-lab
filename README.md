@@ -22,6 +22,18 @@ Built with [Astro](https://astro.build) 5 (server-rendered) and SQLite (`node:sq
 
 The first time it starts, the database is filled with 26 hand-written gems (Bun, Molecule, Biome, mise, just, Testcontainers, uv and more). See [src/lib/seed.ts](src/lib/seed.ts).
 
+## Tool write-ups
+
+Each tool page has a long-form section: key features, an in-depth write-up, strengths, things to watch out for, alternatives, license and implementation language. All of it is editable in the admin editor.
+
+The starting content lives in [content/tools/](content/tools/), one Markdown file per tool, named after its URL slug (for example `content/tools/bun.md`). These files are used to:
+
+- seed a brand-new database
+- fill in tools that existed before write-ups did (a one-time step on first start after upgrading, which never overwrites anything edited in the admin)
+- fill in imported cards that arrive without their own write-up
+
+After that, the database is the source of truth; editing a file doesn't change a tool that already has content. The file format is documented at the top of [src/lib/content.ts](src/lib/content.ts). Write-ups support a small, safe subset of Markdown: `###` headings, lists, code fences, `inline code`, **bold** and https links. HTML is always escaped.
+
 ## Local development
 
 Requires Node 24+.
