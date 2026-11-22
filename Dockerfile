@@ -1,3 +1,8 @@
+# The build must work on CPUs without AVX2 (the production server is a Xeon E5-1620 v2).
+# That is why the project stays on Astro 5 (esbuild + WebAssembly compiler) and swaps
+# Rollup's native binary for @rollup/wasm-node via "overrides" in package.json.
+# Don't upgrade Astro without checking: Astro 7 (Vite 8) adds Rust-native build tools
+# that crashed on this server.
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./

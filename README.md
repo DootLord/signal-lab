@@ -6,7 +6,7 @@ A site for finding developer tools: what's **new** and moving, and the **gems** 
 - **Admin** (`/admin`, password protected): add and edit tools, and review what the scanner suggests.
 - **Scanner:** a scheduled job that collects candidates from GitHub and Hacker News, asks an AI model to pick the best ones and draft cards, and saves them as *pending*. **Nothing is published until you approve it.**
 
-Built with [Astro](https://astro.build) (server-rendered) and SQLite (`node:sqlite`, built into Node 24). The scanner uses any OpenAI-compatible model API (OpenAI by default).
+Built with [Astro](https://astro.build) 5 (server-rendered) and SQLite (`node:sqlite`, built into Node 24). The scanner uses any OpenAI-compatible model API (OpenAI by default).
 
 ## Each tool card
 
@@ -37,17 +37,9 @@ Data is stored in `./data/signal-lab.sqlite` (set `DATABASE_PATH` to change it).
 
 ## Deploying on Coolify
 
-The image is built by GitHub Actions ([.github/workflows/docker.yml](.github/workflows/docker.yml)) on every push to `main` and published to `ghcr.io/dootlord/signal-lab`. Coolify only pulls it. The build tools are precompiled binaries that need AVX2, which the server's CPU (a Xeon E5-1620 v2) doesn't have; building there crashes with exit code 132. The running site is plain Node and works fine on that CPU.
+Coolify builds the image on the server from the [Dockerfile](Dockerfile). The server's CPU (a Xeon E5-1620 v2) has no AVX2, and many modern build tools ship native binaries that crash without it (exit code 132). So the project uses Astro 5, whose build runs on esbuild and a WebAssembly compiler, and swaps Rollup's native binary for its WebAssembly build (`overrides` in [package.json](package.json)). Check this before upgrading Astro: Astro 7 (Vite 8) adds Rust-native build tools that crashed on this server.
 
-0. **One-time setup:** push to `main` and wait for the **Build image** workflow (repo → Actions) to finish successfully. The image then appears under your GitHub profile → Packages, as **private** by default. Then let the server pull it, using one of these:
-   - **Log the server in to the registry (keeps the image private).** Create a GitHub personal access token (classic) with only the `read:packages` scope. Then run this on the Coolify server, as the user Docker runs as (usually root):
-     ```bash
-     echo <token> | docker login ghcr.io -u <github-username> --password-stdin
-     ```
-   - **Make the package public:** package page → Package settings → Change visibility → Public. The image contains the site's source code but no secrets, because environment variables are only supplied at runtime.
-
-   A pull error of `denied` means one of these steps is missing, or the image hasn't been published yet.
-1. **New resource → Git repository**, build pack **Docker Compose** (it uses `docker-compose.yml`). In the resource's settings, turn **off** auto-deploy on push. GitHub Actions triggers the deploy instead, once the image is ready (step 6).
+1. **New resource → Git repository**, build pack **Docker Compose** (it uses `docker-compose.yml`). Auto-deploy on push can stay on.
 2. Give the **signal-lab** service your domain, on port **3000**. Coolify's proxy handles HTTPS.
 3. **Environment variables:**
 
@@ -68,7 +60,6 @@ The image is built by GitHub Actions ([.github/workflows/docker.yml](.github/wor
    - Frequency: `0 7 * * *` (daily) or `0 7 * * 1` (weekly)
 
    Each run's result appears under **Scanner runs** in `/admin`, and its suggestions appear in the review queue.
-6. **Automatic deploys:** in Coolify, copy the resource's **Deploy Webhook** URL, and create an API token under Keys & Tokens → API tokens. Add both to the GitHub repo as Actions secrets named `COOLIFY_WEBHOOK` and `COOLIFY_TOKEN`. Each push now builds the image and then redeploys. Without these secrets, press **Redeploy** in Coolify after the workflow finishes.
 
 ### Choosing the scanner's model
 

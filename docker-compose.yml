@@ -1,9 +1,6 @@
 services:
   signal-lab:
-    # Built by .github/workflows/docker.yml. The server only pulls it, because
-    # the build tools need AVX2, which the server's CPU doesn't have.
-    image: ${SIGNAL_LAB_IMAGE:-ghcr.io/dootlord/signal-lab:latest}
-    pull_policy: always
+    build: .
     restart: unless-stopped
     expose:
       - "3000"
