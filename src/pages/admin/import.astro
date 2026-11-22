@@ -1,0 +1,65 @@
+---
+import Base from '../../layouts/Base.astro';
+import PageHead from '../../components/PageHead.astro';
+import { createTool, knownIdentifiers, normalizeUrl, slugify } from '../../lib/db.ts';
+import { parseImport } from '../../lib/forms.ts';
+import { ArrowRight, CircleAlert, CircleCheck, Info } from '../../components/icons.ts';
+
+let raw = '';
+let added: string[] = [];
+let skipped: string[] = [];
+let errors: string[] = [];
+let submitted = false;
+
+if (Astro.request.method === 'POST') {
+  submitted = true;
+  raw = String((await Astro.request.formData()).get('json') ?? '');
+  const result = parseImport(raw);
+  errors = result.errors;
+  const known = knownIdentifiers();
+  for (const card of result.cards) {
+    const urls = [card.website, card.repo, card.foundVia].filter((u): u is string => !!u).map(normalizeUrl);
+    if (known.slugs.has(slugify(card.name)) || urls.some((u) => known.urls.has(u))) {
+      skipped.push(card.name);
+      continue;
+    }
+    createTool(card, 'pending');
+    added.push(card.name);
+    known.slugs.add(slugify(card.name));
+    urls.forEach((u) => known.urls.add(u));
+  }
+  if (added.length && !errors.length && !skipped.length) raw = '';
+}
+---
+<Base title="Import suggestions" nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Import' }]}>
+  <div style="max-width:880px">
+    <PageHead eyebrow="Admin" title="Import suggestions" description="Paste cards prepared outside the site, for example from a manual review. They go into the review queue; nothing is published until you approve it." />
+
+    {submitted && added.length > 0 && (
+      <div class="alert success" role="status"><CircleCheck size={16} /><span>Added {added.length} to the review queue: {added.join(', ')}. <a class="link" href="/admin">Review them <ArrowRight size={13} style="display:inline;vertical-align:-2px" /></a></span></div>
+    )}
+    {skipped.length > 0 && (
+      <div class="alert info"><Info size={16} /><span>Skipped {skipped.length} already on the site, in the queue or previously rejected: {skipped.join(', ')}.</span></div>
+    )}
+    {errors.length > 0 && (
+      <div class="alert error" role="alert"><CircleAlert size={16} /><ul>{errors.map((e) => <li>{e}</li>)}</ul></div>
+    )}
+
+    <form method="post" class="panel">
+      <div class="form-section">
+        <div class="field" style="margin-bottom:0">
+          <label for="json">Cards (JSON)</label>
+          <textarea id="json" name="json" class="mono" rows="18" required placeholder='[{ "name": "…", "tagline": "…", "description": "…", "kind": "gem", "tags": ["cli"], "repo": "https://github.com/…" }]'>{raw}</textarea>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3>Format</h3>
+        <p class="muted small">A list of cards (or <code>{'{ "cards": [...] }'}</code>), at most 50. Each card needs <code>name</code>, <code>tagline</code>, <code>description</code>, <code>tags</code> and a <code>website</code> or <code>repo</code>. Optional: <code>kind</code> (<code>gem</code> or <code>new</code>), <code>replaces</code>, <code>useWhen</code>, <code>tryIt</code>, <code>docs</code>, <code>foundVia</code>, <code>foundNote</code>. Tools already known by name or link are skipped.</p>
+      </div>
+      <div class="form-actions">
+        <a class="btn ghost" href="/admin">Cancel</a>
+        <button class="btn primary" type="submit">Add to review queue</button>
+      </div>
+    </form>
+  </div>
+</Base>

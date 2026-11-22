@@ -19,6 +19,7 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB',
   <PageHead eyebrow="Admin" title="Dashboard" description="Review what the scanner found and manage the catalogue.">
     <div class="btn-row">
       <a class="btn primary" href="/admin/tools/new"><Plus size={16} /> Add a tool</a>
+      <a class="btn" href="/admin/import"><Inbox size={15} /> Import</a>
       <form method="post" action="/admin/logout"><button class="btn"><LogOut size={15} /> Sign out</button></form>
     </div>
   </PageHead>

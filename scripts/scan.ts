@@ -4,6 +4,8 @@
 //
 //   node scripts/scan.ts            (Coolify scheduled task, e.g. daily)
 //   node scripts/scan.ts --dry-run  (list candidates only; no model call, nothing saved)
+//   node scripts/scan.ts --export candidates.json  (save candidates + README excerpts for a manual
+//                                                   review; paste the resulting cards into /admin/import)
 //
 // Works with any OpenAI-compatible chat API: OpenAI by default, or OpenRouter, a
 // self-hosted Ollama, etc. via SCAN_LLM_URL / SCAN_LLM_MODEL / SCAN_LLM_KEY.
@@ -21,7 +23,8 @@ const LLM_KEY = process.env.SCAN_LLM_KEY || '';
 // Small local models do better with a few candidates at a time; hosted models can take them all at once.
 const BATCH_SIZE = Math.min(Math.max(Number(process.env.SCAN_BATCH_SIZE) || (LLM_KEY ? 24 : 3), 1), 24);
 const IS_OPENAI = new URL(LLM_URL).hostname === 'api.openai.com';
-const README_CHARS = LLM_KEY ? 3500 : 1200;
+const EXPORT_PATH = process.argv.includes('--export') ? process.argv[process.argv.indexOf('--export') + 1] || 'candidates.json' : '';
+const README_CHARS = LLM_KEY || EXPORT_PATH ? 3500 : 1200;
 const MAX_SUGGESTIONS = Math.min(Math.max(Number(process.env.SCAN_MAX_SUGGESTIONS) || 6, 1), 15);
 const MAX_CANDIDATES = 24;
 const DAY = 86_400_000;
@@ -234,7 +237,7 @@ async function draftCards(batch: Candidate[]): Promise<Pick[]> {
   return [];
 }
 
-const DRY_RUN = process.argv.includes('--dry-run');
+const DRY_RUN = process.argv.includes('--dry-run') || !!EXPORT_PATH;
 
 async function main() {
   const runId = DRY_RUN ? 0 : startScan();
@@ -257,10 +260,16 @@ async function main() {
     const candidates = fresh.flatMap((list) => list.slice(0, share)).slice(0, MAX_CANDIDATES);
     candidateCount = candidates.length;
     console.log(`Candidates after de-duplication: ${candidates.length}`);
-    if (DRY_RUN) { for (const c of candidates) console.log(`- [${c.hint}] ${c.name}: ${c.repo ?? c.homepage} (${c.signal.split(';')[0]})`); return; }
+    if (DRY_RUN && !EXPORT_PATH) { for (const c of candidates) console.log(`- [${c.hint}] ${c.name}: ${c.repo ?? c.homepage} (${c.signal.split(';')[0]})`); return; }
     if (!candidates.length) { finishScan(runId, 0, 0); return; }
 
     await Promise.all(candidates.map(attachReadme));
+    if (EXPORT_PATH) {
+      const { writeFileSync } = await import('node:fs');
+      writeFileSync(EXPORT_PATH, JSON.stringify({ exportedAt: new Date().toISOString(), candidates }, null, 2));
+      console.log(`Wrote ${candidates.length} candidates to ${EXPORT_PATH}`);
+      return;
+    }
     if (!LLM_KEY) await ensureOllamaModel();
 
     const picks: Pick[] = [];

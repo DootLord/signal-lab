@@ -16,6 +16,49 @@ function url(raw: string) {
   }
 }
 
+export type ImportResult = { cards: (ToolInput & { foundVia: string | null; foundNote: string | null })[]; errors: string[] };
+
+/**
+ * Parses pasted import JSON: an array of cards, or { cards: [...] }.
+ * Each card uses the same fields as the editor, plus optional foundVia / foundNote.
+ */
+export function parseImport(raw: string): ImportResult {
+  const errors: string[] = [];
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return { cards: [], errors: ['That isn’t valid JSON.'] };
+  }
+  const list = Array.isArray(data) ? data : (data as { cards?: unknown })?.cards;
+  if (!Array.isArray(list)) return { cards: [], errors: ['Expected a list of cards, or an object with a "cards" list.'] };
+  if (list.length > 50) return { cards: [], errors: ['Import at most 50 cards at a time.'] };
+
+  const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\r\n/g, '\n').trim().slice(0, max) : '');
+  const cards: ImportResult['cards'] = [];
+  list.forEach((item, i) => {
+    const c = (item ?? {}) as Record<string, unknown>;
+    const label = str(c.name, 80) || `Card ${i + 1}`;
+    const links = { website: url(str(c.website, 500)), repo: url(str(c.repo, 500)), docs: url(str(c.docs, 500)), foundVia: url(str(c.foundVia, 500)) };
+    const card = {
+      name: str(c.name, 80), tagline: str(c.tagline, 200), description: str(c.description, 2000),
+      replaces: str(c.replaces, 300), useWhen: str(c.useWhen, 600), tryIt: str(c.tryIt, 1500),
+      kind: (kinds.includes(c.kind as Kind) ? c.kind : 'gem') as Kind,
+      tags: [...new Set((Array.isArray(c.tags) ? c.tags : []).map((t) => normalizeTag(String(t))).filter(Boolean))].slice(0, 8),
+      website: links.website ?? null, repo: links.repo ?? null, docs: links.docs ?? null,
+      foundVia: links.foundVia ?? null, foundNote: str(c.foundNote, 600) || null,
+    };
+    const problems = [
+      !card.name && 'a name', !card.tagline && 'a tagline', !card.description && 'a description', !card.tags.length && 'a tag',
+      !card.website && !card.repo && 'a website or repo link',
+      Object.values(links).some((v) => v === undefined) && 'valid http(s) links',
+    ].filter(Boolean);
+    if (problems.length) errors.push(`${label}: needs ${problems.join(', ')}.`);
+    else cards.push(card);
+  });
+  return { cards, errors };
+}
+
 export function parseToolForm(form: FormData): FormResult {
   const errors: string[] = [];
   const kind = text(form, 'kind', 10) as Kind;
