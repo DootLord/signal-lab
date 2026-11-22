@@ -2,9 +2,11 @@
 import Base from '../../layouts/Base.astro';
 import ToolCard from '../../components/ToolCard.astro';
 import KindBadge from '../../components/KindBadge.astro';
-import Monogram from '../../components/Monogram.astro';
+import ToolLogo from '../../components/ToolLogo.astro';
+import Recommend from '../../components/Recommend.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
-import { getPublishedBySlug, publishedSlugs, related, slugify } from '../../lib/db.ts';
+import { getPublishedBySlug, getVote, publishedSlugs, related, slugify } from '../../lib/db.ts';
+import { voterId } from '../../lib/votes.ts';
 import { formatDate, host, lines, pairs } from '../../lib/format.ts';
 import { renderInline, renderMarkdown } from '../../lib/markdown.ts';
 import {
@@ -14,6 +16,8 @@ import {
 const tool = getPublishedBySlug(Astro.params.slug ?? '');
 if (!tool) return new Response(null, { status: 404, statusText: 'Not found' });
 const more = related(tool, 3);
+const voter = voterId(Astro.cookies);
+const mine = voter ? getVote(tool.id, voter) : 0;
 const links = [
   tool.website && { href: tool.website, label: 'Website', Icon: Globe },
   tool.repo && { href: tool.repo, label: 'Source code', Icon: FolderGit2 },
@@ -42,7 +46,7 @@ const toc = [
 ---
 <Base title={tool.name} description={`${tool.name}: ${tool.tagline}`} crumbs={[{ label: 'Browse', href: '/browse' }, { label: tool.name }]}>
   <header class="tool-hero">
-    <Monogram name={tool.name} />
+    <ToolLogo tool={tool} eager />
     <div class="tool-hero-main">
       <div class="badges">
         <KindBadge kind={tool.kind} />
@@ -56,6 +60,7 @@ const toc = [
         {Astro.locals.admin && <a class="btn ghost" href={`/admin/tools/${tool.id}`}><Pencil size={15} /> Edit</a>}
       </div>
     </div>
+    <Recommend tool={tool} mine={mine} />
   </header>
 
   <div class="tool-layout">

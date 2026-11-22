@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import KindBadge from '../../components/KindBadge.astro';
-import Monogram from '../../components/Monogram.astro';
+import ToolLogo from '../../components/ToolLogo.astro';
 import PageHead from '../../components/PageHead.astro';
 import Empty from '../../components/Empty.astro';
 import { listByStatus, recentScans } from '../../lib/db.ts';
@@ -39,7 +39,7 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB',
       <div class="queue">
         {pending.map((t) => (
           <article class="queue-item">
-            <Monogram name={t.name} />
+            <ToolLogo tool={t} />
             <div class="q-main">
               <h3>{t.name} <KindBadge kind={t.kind} /></h3>
               <p class="q-tagline">{t.tagline}</p>
@@ -87,13 +87,14 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB',
     <div class="section-head"><div><h2>Published tools</h2><p>{published.length} live on the site.</p></div></div>
     <div class="panel table-wrap">
       <table class="table">
-        <thead><tr><th>Tool</th><th>Type</th><th>Topics</th><th>Updated</th><th></th></tr></thead>
+        <thead><tr><th>Tool</th><th>Type</th><th>Topics</th><th>Recommend</th><th>Updated</th><th></th></tr></thead>
         <tbody>
           {published.map((t) => (
             <tr>
-              <td><a class="name-cell" href={`/admin/tools/${t.id}`}><Monogram name={t.name} size={28} />{t.name}</a></td>
+              <td><a class="name-cell" href={`/admin/tools/${t.id}`}><ToolLogo tool={t} size={28} />{t.name}</a></td>
               <td><KindBadge kind={t.kind} /></td>
               <td class="muted">{t.tags.join(', ')}</td>
+              <td class="muted" title="Recommend / Not for me">{t.votes.up + t.votes.down ? `${t.votes.up} / ${t.votes.down}` : '–'}</td>
               <td class="muted">{formatDate(t.updatedAt)}</td>
               <td><a class="btn ghost sm" href={`/admin/tools/${t.id}`} aria-label={`Edit ${t.name}`}><ChevronRight size={16} /></a></td>
             </tr>
@@ -109,7 +110,7 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB',
         <summary><ChevronRight size={16} /> Rejected ({rejected.length}) <span class="muted small" style="font-weight:400">· kept so the scanner doesn’t suggest them again</span></summary>
         <div class="rows" style="margin-top:14px">
           {rejected.map((t) => (
-            <div class="row"><Monogram name={t.name} size={32} /><div class="row-main"><h3><a href={`/admin/tools/${t.id}`}>{t.name}</a></h3><p>{t.tagline}</p></div></div>
+            <div class="row"><ToolLogo tool={t} size={32} /><div class="row-main"><h3><a href={`/admin/tools/${t.id}`}>{t.name}</a></h3><p>{t.tagline}</p></div></div>
           ))}
         </div>
       </details>

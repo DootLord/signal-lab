@@ -4,6 +4,7 @@ import ToolForm from '../../../components/ToolForm.astro';
 import PageHead from '../../../components/PageHead.astro';
 import { createTool, type ToolInput } from '../../../lib/db.ts';
 import { parseToolForm } from '../../../lib/forms.ts';
+import { refreshLogo } from '../../../lib/logos.ts';
 
 let errors: string[] = [];
 let value: Partial<ToolInput> = { kind: 'gem' };
@@ -11,6 +12,7 @@ if (Astro.request.method === 'POST') {
   const result = parseToolForm(await Astro.request.formData());
   if (result.ok) {
     const tool = createTool(result.value, 'published');
+    await refreshLogo(tool.id);
     return Astro.redirect(`/tools/${tool.slug}`, 303);
   }
   errors = result.errors;

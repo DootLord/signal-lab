@@ -1,0 +1,16 @@
+---
+import type { Tool } from '../lib/db.ts';
+import Monogram from './Monogram.astro';
+
+// The tool's own logo when one was found, otherwise its monogram.
+interface Props { tool: Pick<Tool, 'name' | 'slug' | 'logo'>; size?: number; eager?: boolean; }
+const { tool, size, eager = false } = Astro.props;
+const px = size ?? 44;
+---
+{tool.logo ? (
+  <span class="logo" style={size ? `--size:${size}px` : undefined} aria-hidden="true">
+    <img src={`/logos/${tool.slug}?v=${tool.logo}`} alt="" width={px} height={px} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+  </span>
+) : (
+  <Monogram name={tool.name} size={size} />
+)}

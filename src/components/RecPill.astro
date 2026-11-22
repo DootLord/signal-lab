@@ -1,0 +1,12 @@
+---
+import type { Tool } from '../lib/db.ts';
+import { summary } from '../lib/votes.ts';
+import { ThumbsUp } from './icons.ts';
+
+// Compact "N recommend" marker for cards and lists. Hidden until someone has voted.
+interface Props { tool: Pick<Tool, 'votes'>; }
+const { up, down } = Astro.props.tool.votes;
+const { total, percent } = summary(up, down);
+const label = total === 1 ? '1 developer recommends it' : `${up} of ${total} developers recommend it (${percent}%)`;
+---
+{up > 0 && <span class="rec-pill" title={label}><ThumbsUp size={13} /> {up}<span class="visually-hidden"> recommend</span></span>}

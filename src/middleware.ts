@@ -1,8 +1,16 @@
 import { defineMiddleware } from 'astro:middleware';
 import { isAdmin } from './lib/auth.ts';
+import { backfillLogos } from './lib/logos.ts';
+
+// Look for missing logos once per server start, in the background.
+let logosChecked = false;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url, cookies, redirect } = context;
+  if (!logosChecked) {
+    logosChecked = true;
+    backfillLogos().catch((e) => console.error('Logo backfill failed:', e));
+  }
 
   // Same-origin check for every state-changing request. Compares against the
   // Host the browser used (X-Forwarded-Host behind Coolify's proxy).

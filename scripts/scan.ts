@@ -17,6 +17,7 @@
 import { z } from 'zod';
 import { createTool, finishScan, knownIdentifiers, normalizeUrl, slugify, startScan } from '../src/lib/db.ts';
 import { normalizeDetails } from '../src/lib/forms.ts';
+import { backfillLogos } from '../src/lib/logos.ts';
 
 const LLM_URL = (process.env.SCAN_LLM_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
 const LLM_MODEL = process.env.SCAN_LLM_MODEL || 'gpt-5-mini';
@@ -320,6 +321,8 @@ async function main() {
       console.log(`Suggested: ${p.name} (${p.kind}, score ${p.score})`);
     }
     finishScan(runId, candidateCount, saved);
+    // Logos for the new suggestions, plus any retries or refreshes that are due.
+    console.log(`Checked logos for ${await backfillLogos()} tool(s).`);
     console.log(`Done. ${saved} suggestion(s) waiting for review in /admin.`);
   } catch (error) {
     if (DRY_RUN) throw error;

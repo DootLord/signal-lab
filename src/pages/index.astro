@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import ToolCard from '../components/ToolCard.astro';
 import ToolRow from '../components/ToolRow.astro';
 import KindBadge from '../components/KindBadge.astro';
-import Monogram from '../components/Monogram.astro';
+import ToolLogo from '../components/ToolLogo.astro';
+import RecPill from '../components/RecPill.astro';
 import CodeBlock from '../components/CodeBlock.astro';
 import TopicIcon from '../components/TopicIcon.astro';
 import { featuredGem, listPublished, siteStats, tagCounts } from '../lib/db.ts';
@@ -54,10 +55,10 @@ const quick = tagCounts().slice(0, 5);
       <article class="feature">
         <div class="feature-main">
           <div style="display:flex;gap:14px;align-items:center">
-            <Monogram name={featured.name} size={56} />
+            <ToolLogo tool={featured} size={56} />
             <div>
               <h2 id="featured-title"><a href={`/tools/${featured.slug}`}>{featured.name}</a></h2>
-              <KindBadge kind={featured.kind} />
+              <div class="badges"><KindBadge kind={featured.kind} /><RecPill tool={featured} /></div>
             </div>
           </div>
           <p class="lead">{featured.description}</p>

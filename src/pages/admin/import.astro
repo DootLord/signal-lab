@@ -4,6 +4,7 @@ import PageHead from '../../components/PageHead.astro';
 import { createTool, knownIdentifiers, normalizeUrl, slugify } from '../../lib/db.ts';
 import { loadDetails } from '../../lib/content.ts';
 import { parseImport } from '../../lib/forms.ts';
+import { backfillLogos } from '../../lib/logos.ts';
 import { ArrowRight, CircleAlert, CircleCheck, Info } from '../../components/icons.ts';
 
 let raw = '';
@@ -33,6 +34,7 @@ if (Astro.request.method === 'POST') {
     known.slugs.add(slugify(card.name));
     urls.forEach((u) => known.urls.add(u));
   }
+  if (added.length) void backfillLogos();
   if (added.length && !errors.length && !skipped.length) raw = '';
 }
 ---

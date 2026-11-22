@@ -132,7 +132,10 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
         </main>
 
         <footer class="site-footer">
-          <span>© {new Date().getUTCFullYear()} Signal Lab · The tools you’d hear about from a good teammate.</span>
+          <span class="footer-credit">
+            © {new Date().getUTCFullYear()} Signal Lab · Made by
+            <a class="made-by" href="https://dootlord.meme" rel="author"><img src="/dootlord.png" alt="" width="22" height="22" loading="lazy" />DootLord</a>
+          </span>
           <nav aria-label="Footer">
             <a href="/browse">Browse</a>
             <a href="/topics">Topics</a>

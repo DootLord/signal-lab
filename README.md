@@ -22,6 +22,16 @@ Built with [Astro](https://astro.build) 5 (server-rendered) and SQLite (`node:sq
 
 The first time it starts, the database is filled with 26 hand-written gems (Bun, Molecule, Biome, mise, just, Testcontainers, uv and more). See [src/lib/seed.ts](src/lib/seed.ts).
 
+## Logos
+
+Each tool shows its own logo, found automatically and stored in the database, so pages never hotlink other sites. The lookup tries the icons the tool's website declares (SVG favicon, web-app manifest, apple-touch-icon, `/favicon.ico`), then the avatar of the GitHub **organisation** that owns the repo. Personal GitHub avatars are skipped, since they're faces rather than logos. Anything smaller than 32px is rejected and the tool keeps its coloured monogram.
+
+Logos are looked up when a tool is added or its links change, on each server start for any tool still missing one, and after every scanner run. Failed lookups are retried after a week and found logos are refreshed monthly. In the admin editor, **Refetch logo** looks again straight away, and **Logo image URL** overrides auto-detection for a tool whose site has no usable icon.
+
+## Recommendations
+
+Every tool page asks **“Would you recommend it?”**: *Recommend* or *Not for me*. The page shows the share who recommend it, cards show the number of recommendations, and Browse can sort by **Most recommended**. There are no visitor accounts. A visitor is identified by a random cookie, each network (a salted hash of the IP; raw IPs are never stored) can cast at most 5 votes per tool, and vote requests are rate limited.
+
 ## Tool write-ups
 
 Each tool page has a long-form section: key features, an in-depth write-up, strengths, things to watch out for, alternatives, license and implementation language. All of it is editable in the admin editor.

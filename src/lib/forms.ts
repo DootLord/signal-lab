@@ -76,14 +76,14 @@ export function parseImport(raw: string): ImportResult {
   list.forEach((item, i) => {
     const c = (item ?? {}) as Record<string, unknown>;
     const label = str(c.name, 80) || `Card ${i + 1}`;
-    const links = { website: url(str(c.website, 500)), repo: url(str(c.repo, 500)), docs: url(str(c.docs, 500)), foundVia: url(str(c.foundVia, 500)) };
+    const links = { website: url(str(c.website, 500)), repo: url(str(c.repo, 500)), docs: url(str(c.docs, 500)), foundVia: url(str(c.foundVia, 500)), logoUrl: url(str(c.logoUrl, 500)) };
     const card = {
       name: str(c.name, 80), tagline: str(c.tagline, 200), description: str(c.description, 2000),
       replaces: str(c.replaces, 300), useWhen: str(c.useWhen, 600), tryIt: str(c.tryIt, 1500),
       kind: (kinds.includes(c.kind as Kind) ? c.kind : 'gem') as Kind,
       tags: [...new Set((Array.isArray(c.tags) ? c.tags : []).map((t) => normalizeTag(String(t))).filter(Boolean))].slice(0, 8),
       website: links.website ?? null, repo: links.repo ?? null, docs: links.docs ?? null,
-      foundVia: links.foundVia ?? null, foundNote: str(c.foundNote, 600) || null,
+      foundVia: links.foundVia ?? null, logoUrl: links.logoUrl ?? null, foundNote: str(c.foundNote, 600) || null,
       ...normalizeDetails(c),
     };
     const problems = [
@@ -100,7 +100,7 @@ export function parseImport(raw: string): ImportResult {
 export function parseToolForm(form: FormData): FormResult {
   const errors: string[] = [];
   const kind = text(form, 'kind', 10) as Kind;
-  const links = { website: url(text(form, 'website', 500)), repo: url(text(form, 'repo', 500)), docs: url(text(form, 'docs', 500)) };
+  const links = { website: url(text(form, 'website', 500)), repo: url(text(form, 'repo', 500)), docs: url(text(form, 'docs', 500)), logo: url(text(form, 'logoUrl', 500)) };
   const value = {
     name: text(form, 'name', 80),
     tagline: text(form, 'tagline', 200),
@@ -113,6 +113,7 @@ export function parseToolForm(form: FormData): FormResult {
     website: links.website ?? null,
     repo: links.repo ?? null,
     docs: links.docs ?? null,
+    logoUrl: links.logo ?? null,
     ...normalizeDetails(Object.fromEntries(['features', 'body', 'strengths', 'limitations', 'alternatives', 'license', 'language'].map((k) => [k, String(form.get(k) ?? '')]))),
   };
   if (!value.name) errors.push('Name is required.');

@@ -1,0 +1,85 @@
+---
+import type { Tool } from '../lib/db.ts';
+import { plural } from '../lib/format.ts';
+import { summary } from '../lib/votes.ts';
+import { ThumbsDown, ThumbsUp } from './icons.ts';
+
+// "Would you recommend it?" box. A plain form that the script below upgrades to
+// fetch, so it works without JavaScript too. Clicking your current choice again
+// takes the vote back.
+interface Props { tool: Pick<Tool, 'name' | 'slug' | 'votes'>; mine: 1 | -1 | 0; }
+const { tool, mine } = Astro.props;
+const { up, down } = tool.votes;
+const { total, percent } = summary(up, down);
+---
+<section class="recommend" id="recommend" data-recommend aria-labelledby="recommend-title">
+  <h2 id="recommend-title">Would you recommend {tool.name}?</h2>
+  <p class="rec-summary" data-rec-summary>
+    {total ? <><b>{percent}%</b> recommend it · {plural(total, 'vote')}</> : 'No votes yet. Tried it? Be the first to say.'}
+  </p>
+  <div class="rec-bar" data-rec-bar hidden={!total} aria-hidden="true"><span style={`width:${percent}%`}></span></div>
+  <form method="post" action={`/tools/${tool.slug}/vote`} class="rec-actions">
+    <button class="btn rec-btn up" name="vote" value={mine === 1 ? 'clear' : 'up'} aria-pressed={mine === 1 ? 'true' : 'false'} data-dir="up">
+      <ThumbsUp size={16} /> Recommend <span class="rec-count" data-count>{up}</span>
+    </button>
+    <button class="btn rec-btn down" name="vote" value={mine === -1 ? 'clear' : 'down'} aria-pressed={mine === -1 ? 'true' : 'false'} data-dir="down">
+      <ThumbsDown size={16} /> Not for me <span class="rec-count" data-count>{down}</span>
+    </button>
+  </form>
+  <p class="rec-note" data-rec-note role="status">
+    {mine ? 'Thanks for weighing in. Click your choice again to take it back.' : 'One vote per person. No account needed.'}
+  </p>
+</section>
+
+<script>
+  type Tally = { up: number; down: number; mine: 1 | -1 | 0; error?: string };
+
+  for (const box of document.querySelectorAll<HTMLElement>('[data-recommend]')) {
+    const form = box.querySelector('form')!;
+    const note = box.querySelector<HTMLElement>('[data-rec-note]')!;
+    const summary = box.querySelector<HTMLElement>('[data-rec-summary]')!;
+    const bar = box.querySelector<HTMLElement>('[data-rec-bar]')!;
+    const buttons = [...form.querySelectorAll<HTMLButtonElement>('button[data-dir]')];
+
+    const render = ({ up, down, mine }: Tally) => {
+      const total = up + down;
+      const percent = total ? Math.round((up / total) * 100) : 0;
+      summary.textContent = '';
+      if (total) {
+        const b = document.createElement('b');
+        b.textContent = `${percent}%`;
+        summary.append(b, ` recommend it · ${total} ${total === 1 ? 'vote' : 'votes'}`);
+      } else {
+        summary.textContent = 'No votes yet. Tried it? Be the first to say.';
+      }
+      bar.hidden = !total;
+      bar.querySelector('span')!.style.width = `${percent}%`;
+      for (const btn of buttons) {
+        const dir = btn.dataset.dir === 'up' ? 1 : -1;
+        btn.setAttribute('aria-pressed', String(mine === dir));
+        btn.value = mine === dir ? 'clear' : btn.dataset.dir!;
+        btn.querySelector('[data-count]')!.textContent = String(dir === 1 ? up : down);
+      }
+      note.textContent = mine ? 'Thanks for weighing in. Click your choice again to take it back.' : 'One vote per person. No account needed.';
+    };
+
+    form.addEventListener('submit', async (event) => {
+      const btn = event.submitter as HTMLButtonElement | null;
+      if (!btn) return;
+      event.preventDefault();
+      const body = new FormData();
+      body.set('vote', btn.value);
+      for (const b of buttons) b.disabled = true;
+      try {
+        const res = await fetch(form.action, { method: 'POST', body, headers: { Accept: 'application/json' } });
+        const data = (await res.json()) as Tally;
+        if (res.ok) render(data);
+        else note.textContent = data.error ?? 'That didn’t work. Please try again.';
+      } catch {
+        note.textContent = 'Couldn’t reach the server. Please try again.';
+      } finally {
+        for (const b of buttons) b.disabled = false;
+      }
+    });
+  }
+</script>

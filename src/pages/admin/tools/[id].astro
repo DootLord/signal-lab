@@ -2,10 +2,12 @@
 import Base from '../../../layouts/Base.astro';
 import ToolForm from '../../../components/ToolForm.astro';
 import KindBadge from '../../../components/KindBadge.astro';
-import Monogram from '../../../components/Monogram.astro';
-import { deleteTool, getToolById, setStatus, updateTool, type ToolInput } from '../../../lib/db.ts';
+import ToolLogo from '../../../components/ToolLogo.astro';
+import { deleteTool, getLogoInfo, getToolById, setStatus, updateTool, type ToolInput } from '../../../lib/db.ts';
+import { refreshLogo } from '../../../lib/logos.ts';
+import { host, timeAgo } from '../../../lib/format.ts';
 import { parseToolForm } from '../../../lib/forms.ts';
-import { ArrowUpRight, CircleCheck, Radar, Trash } from '../../../components/icons.ts';
+import { ArrowUpRight, CircleCheck, ImageIcon, Radar, RefreshCw, ThumbsDown, ThumbsUp, Trash } from '../../../components/icons.ts';
 
 const id = Number(Astro.params.id);
 let tool = Number.isInteger(id) ? getToolById(id) : undefined;
@@ -28,10 +30,21 @@ if (Astro.request.method === 'POST') {
     deleteTool(id);
     return Astro.redirect('/admin', 303);
   }
+  if (action === 'logo') {
+    await refreshLogo(id);
+    tool = getToolById(id)!;
+    value = tool;
+  }
   if (action === 'save') {
     const result = parseToolForm(form);
     if (result.ok) {
+      const before = tool;
       tool = updateTool(id, result.value)!;
+      // A new link may mean a different logo.
+      if (before.website !== tool.website || before.repo !== tool.repo || before.logoUrl !== tool.logoUrl) {
+        await refreshLogo(id);
+        tool = getToolById(id)!;
+      }
       value = tool;
       saved = true;
     } else {
@@ -40,6 +53,7 @@ if (Astro.request.method === 'POST') {
     }
   }
 }
+const logoInfo = getLogoInfo(id);
 const status = {
   published: { label: 'Published', cls: 'new' },
   pending: { label: 'Waiting for review', cls: 'accent' },
@@ -49,7 +63,7 @@ const status = {
 <Base title={`Edit ${tool.name}`} nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: tool.name }]}>
   <div style="max-width:880px">
     <header class="tool-hero" style="margin-bottom:20px;padding-bottom:20px">
-      <Monogram name={tool.name} size={56} />
+      <ToolLogo tool={tool} size={56} eager />
       <div class="tool-hero-main">
         <div class="badges"><span class={`badge ${status.cls}`}>{status.label}</span><KindBadge kind={tool.kind} /></div>
         <h1>{tool.name}</h1>
@@ -80,6 +94,19 @@ const status = {
         <span><strong>Why the scanner suggested this:</strong> {tool.foundNote}{tool.foundVia && <> · <a class="link" href={tool.foundVia} rel="noopener" target="_blank">source</a></>}</span>
       </div>
     )}
+
+    <div class="alert info logo-status">
+      <ImageIcon size={16} />
+      <span>
+        {logoInfo?.found
+          ? <>Logo from <a class="link" href={logoInfo.source!} rel="noopener" target="_blank">{host(logoInfo.source!)}</a>, checked {timeAgo(logoInfo.fetched_at)}.</>
+          : logoInfo
+            ? <>No logo found ({logoInfo.error}), so the monogram is shown. Paste a <b>Logo image URL</b> below to set one.</>
+            : <>Looking for a logo in the background.</>}
+        {' '}<span class="muted"><ThumbsUp size={13} /> {tool.votes.up} · <ThumbsDown size={13} /> {tool.votes.down}</span>
+      </span>
+      <form method="post" style="margin-left:auto"><input type="hidden" name="_action" value="logo" /><button class="btn sm"><RefreshCw size={14} /> Refetch logo</button></form>
+    </div>
 
     <ToolForm value={value} errors={errors} submitLabel="Save changes" />
   </div>

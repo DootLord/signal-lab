@@ -14,7 +14,8 @@ const q = (params.get('q') ?? '').trim().slice(0, 100);
 const tag = params.get('tag') ?? '';
 const kindParam = params.get('kind') ?? '';
 const kind = kinds.includes(kindParam as Kind) ? (kindParam as Kind) : undefined;
-const order = params.get('sort') === 'name' ? 'name' : 'recent';
+const sort = params.get('sort');
+const order = sort === 'name' ? 'name' : sort === 'top' ? 'top' : 'recent';
 const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
 
 const { total, tools } = listPublished({ q, tag, kind, order, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
@@ -88,6 +89,7 @@ const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicL
           <span class="select-wrap">
             <select id="sort" name="sort" data-autosubmit>
               <option value="">Recently added</option>
+              <option value="top" selected={order === 'top'}>Most recommended</option>
               <option value="name" selected={order === 'name'}>Name A–Z</option>
             </select>
             <ChevronDown size={14} />

@@ -34,6 +34,8 @@ export type ToolInput = {
   alternatives?: string;
   license?: string;
   language?: string;
+  // Optional image URL that overrides logo auto-detection.
+  logoUrl?: string | null;
 };
 
 export const detailFields = ['features', 'body', 'strengths', 'limitations', 'alternatives', 'license', 'language'] as const;
@@ -41,6 +43,10 @@ export type Details = Record<(typeof detailFields)[number], string>;
 
 export type Tool = ToolInput & Details & {
   id: number;
+  logoUrl: string | null;
+  /** Version stamp of the stored logo (for cache busting), or null when there is none. */
+  logo: string | null;
+  votes: { up: number; down: number };
   slug: string;
   status: Status;
   createdAt: string;
@@ -55,6 +61,7 @@ type Row = {
   found_via: string | null; found_note: string | null;
   features: string; body: string; strengths: string; limitations: string; alternatives: string; license: string; language: string;
   created_at: string; published_at: string | null; updated_at: string; tags: string | null;
+  logo_url: string | null; logo_at: string | null; up: number; down: number;
 };
 
 const migrations = [
@@ -96,6 +103,21 @@ const migrations = [
    ALTER TABLE tools ADD COLUMN license TEXT NOT NULL DEFAULT '';
    ALTER TABLE tools ADD COLUMN language TEXT NOT NULL DEFAULT '';
    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  `ALTER TABLE tools ADD COLUMN logo_url TEXT;
+   CREATE TABLE logos (
+     tool_id INTEGER PRIMARY KEY REFERENCES tools(id) ON DELETE CASCADE,
+     mime TEXT, data BLOB, source TEXT, error TEXT,
+     fetched_at TEXT NOT NULL
+   );
+   CREATE TABLE votes (
+     tool_id INTEGER NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
+     voter TEXT NOT NULL,
+     value INTEGER NOT NULL CHECK (value IN (1, -1)),
+     ip_hash TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     PRIMARY KEY (tool_id, voter)
+   );
+   CREATE INDEX votes_tool_ip ON votes(tool_id, ip_hash);`,
 ];
 
 /**
@@ -166,7 +188,12 @@ export function normalizeUrl(url: string) {
   }
 }
 
-const SELECT = `SELECT t.*, (SELECT group_concat(tag, ',') FROM tool_tags WHERE tool_id = t.id) AS tags FROM tools t`;
+const SELECT = `SELECT t.*,
+  (SELECT group_concat(tag, ',') FROM tool_tags WHERE tool_id = t.id) AS tags,
+  (SELECT fetched_at FROM logos WHERE tool_id = t.id AND data IS NOT NULL) AS logo_at,
+  (SELECT coalesce(SUM(value = 1), 0) FROM votes WHERE tool_id = t.id) AS up,
+  (SELECT coalesce(SUM(value = -1), 0) FROM votes WHERE tool_id = t.id) AS down
+  FROM tools t`;
 
 function toTool(r: Row): Tool {
   return {
@@ -177,6 +204,8 @@ function toTool(r: Row): Tool {
     alternatives: r.alternatives, license: r.license, language: r.language,
     createdAt: r.created_at, publishedAt: r.published_at, updatedAt: r.updated_at,
     tags: r.tags ? r.tags.split(',').sort() : [],
+    logoUrl: r.logo_url, logo: r.logo_at ? Date.parse(r.logo_at).toString(36) : null,
+    votes: { up: Number(r.up), down: Number(r.down) },
   };
 }
 
@@ -205,12 +234,12 @@ export function createTool(input: ToolInput, status: Status): Tool {
   const result = d.prepare(
     `INSERT INTO tools (slug, name, tagline, description, replaces, use_when, try_it, kind, status,
        website, repo, docs, found_via, found_note, features, body, strengths, limitations, alternatives, license, language,
-       created_at, published_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       logo_url, created_at, published_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     uniqueSlug(input.name), input.name, input.tagline, input.description, input.replaces, input.useWhen,
     input.tryIt, input.kind, status, input.website, input.repo, input.docs, input.foundVia ?? null,
-    input.foundNote ?? null, ...detailValues(input), ts, status === 'published' ? ts : null, ts,
+    input.foundNote ?? null, ...detailValues(input), input.logoUrl ?? null, ts, status === 'published' ? ts : null, ts,
   );
   const id = Number(result.lastInsertRowid);
   setTags(id, input.tags);
@@ -223,11 +252,11 @@ export function updateTool(id: number, input: ToolInput): Tool | undefined {
   getDb().prepare(
     `UPDATE tools SET slug = ?, name = ?, tagline = ?, description = ?, replaces = ?, use_when = ?, try_it = ?,
        kind = ?, website = ?, repo = ?, docs = ?, features = ?, body = ?, strengths = ?, limitations = ?,
-       alternatives = ?, license = ?, language = ?, updated_at = ? WHERE id = ?`,
+       alternatives = ?, license = ?, language = ?, logo_url = ?, updated_at = ? WHERE id = ?`,
   ).run(
     existing.name === input.name ? existing.slug : uniqueSlug(input.name, id), input.name, input.tagline,
     input.description, input.replaces, input.useWhen, input.tryIt, input.kind, input.website, input.repo,
-    input.docs, ...detailValues(input), now(), id,
+    input.docs, ...detailValues(input), input.logoUrl ?? null, now(), id,
   );
   setTags(id, input.tags);
   return getToolById(id);
@@ -255,7 +284,7 @@ export function getPublishedBySlug(slug: string) {
   return r && toTool(r);
 }
 
-export type Query = { q?: string; tag?: string; kind?: Kind; limit?: number; offset?: number; order?: 'recent' | 'name' | 'random' };
+export type Query = { q?: string; tag?: string; kind?: Kind; limit?: number; offset?: number; order?: 'recent' | 'name' | 'random' | 'top' };
 
 export function listPublished(query: Query = {}) {
   const where = [`t.status = 'published'`];
@@ -268,7 +297,10 @@ export function listPublished(query: Query = {}) {
       OR lower(t.replaces) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM tool_tags x WHERE x.tool_id = t.id AND x.tag LIKE ? ESCAPE '\\'))`);
     params.push(like, like, like, like, like);
   }
-  const order = query.order === 'name' ? 'lower(t.name)' : query.order === 'random' ? 'random()' : 't.published_at DESC, t.id DESC';
+  const order = query.order === 'name' ? 'lower(t.name)'
+    : query.order === 'random' ? 'random()'
+    : query.order === 'top' ? 'up DESC, down ASC, t.published_at DESC, t.id DESC'
+    : 't.published_at DESC, t.id DESC';
   const filter = `WHERE ${where.join(' AND ')}`;
   const { n } = getDb().prepare(`SELECT COUNT(*) AS n FROM tools t ${filter}`).get(...params) as { n: number };
   const rows = getDb()
@@ -354,4 +386,83 @@ export function recentScans(limit = 10) {
 /** Slugs of every published tool, for linking alternatives that are also in the catalogue. */
 export function publishedSlugs() {
   return new Set((getDb().prepare(`SELECT slug FROM tools WHERE status = 'published'`).all() as { slug: string }[]).map((r) => r.slug));
+}
+
+// ───────────────── Logos ─────────────────
+
+export function getLogoBySlug(slug: string) {
+  return getDb().prepare(
+    `SELECT l.mime, l.data, t.status FROM logos l JOIN tools t ON t.id = l.tool_id WHERE t.slug = ? AND l.data IS NOT NULL`,
+  ).get(slug) as { mime: string; data: Uint8Array; status: Status } | undefined;
+}
+
+export function getLogoInfo(id: number) {
+  return getDb().prepare('SELECT source, error, fetched_at, data IS NOT NULL AS found FROM logos WHERE tool_id = ?').get(id) as
+    { source: string | null; error: string | null; fetched_at: string; found: number } | undefined;
+}
+
+export type FetchedLogo = { mime: string; data: Uint8Array; source: string };
+
+/** Stores a fetched logo, or records a failed attempt so it isn't retried on every start. */
+export function saveLogo(id: number, logo: FetchedLogo | { error: string }) {
+  const found = 'data' in logo;
+  getDb().prepare(
+    `INSERT INTO logos (tool_id, mime, data, source, error, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (tool_id) DO UPDATE SET mime = excluded.mime, data = excluded.data, source = excluded.source,
+       error = excluded.error, fetched_at = excluded.fetched_at`,
+  ).run(id, found ? logo.mime : null, found ? logo.data : null, found ? logo.source : null, found ? null : logo.error.slice(0, 300), now());
+}
+
+/** Tools whose logo has never been looked up, failed a while ago, or is due a refresh. */
+export function toolsNeedingLogos(retryFailedAfterDays = 7, refreshAfterDays = 30) {
+  const failed = new Date(Date.now() - retryFailedAfterDays * 86_400_000).toISOString();
+  const stale = new Date(Date.now() - refreshAfterDays * 86_400_000).toISOString();
+  return (getDb().prepare(
+    `SELECT t.id FROM tools t LEFT JOIN logos l ON l.tool_id = t.id
+     WHERE t.status != 'rejected' AND (l.tool_id IS NULL
+       OR (l.data IS NULL AND l.fetched_at < ?) OR (l.data IS NOT NULL AND l.fetched_at < ?))
+     ORDER BY t.status = 'published' DESC, t.id`,
+  ).all(failed, stale) as { id: number }[]).map((r) => r.id);
+}
+
+// ───────────────── Recommendations ─────────────────
+
+export type VoteValue = 1 | -1;
+
+/** A random per-install salt, so stored network hashes can't be reversed by hashing every IPv4 address. */
+export function voteSalt() {
+  const d = getDb();
+  const read = () => (d.prepare(`SELECT value FROM meta WHERE key = 'vote_salt'`).get() as { value: string } | undefined)?.value;
+  const existing = read();
+  if (existing) return existing;
+  d.prepare(`INSERT OR IGNORE INTO meta (key, value) VALUES ('vote_salt', ?)`).run(Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex'));
+  return read()!;
+}
+
+export function voteTally(toolId: number) {
+  return getDb().prepare(
+    'SELECT coalesce(SUM(value = 1), 0) AS up, coalesce(SUM(value = -1), 0) AS down FROM votes WHERE tool_id = ?',
+  ).get(toolId) as { up: number; down: number };
+}
+
+export function getVote(toolId: number, voter: string): VoteValue | 0 {
+  const r = getDb().prepare('SELECT value FROM votes WHERE tool_id = ? AND voter = ?').get(toolId, voter) as { value: VoteValue } | undefined;
+  return r?.value ?? 0;
+}
+
+/** How many other voters on this network have already voted on this tool. */
+export function votersOnNetwork(toolId: number, ipHash: string, exceptVoter: string) {
+  const { n } = getDb().prepare('SELECT COUNT(*) AS n FROM votes WHERE tool_id = ? AND ip_hash = ? AND voter != ?')
+    .get(toolId, ipHash, exceptVoter) as { n: number };
+  return n;
+}
+
+/** Records, changes or (with 0) removes a visitor's vote. */
+export function setVote(toolId: number, voter: string, value: VoteValue | 0, ipHash: string) {
+  const d = getDb();
+  if (value === 0) d.prepare('DELETE FROM votes WHERE tool_id = ? AND voter = ?').run(toolId, voter);
+  else d.prepare(
+    `INSERT INTO votes (tool_id, voter, value, ip_hash, created_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (tool_id, voter) DO UPDATE SET value = excluded.value, ip_hash = excluded.ip_hash`,
+  ).run(toolId, voter, value, ipHash, now());
 }

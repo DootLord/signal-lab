@@ -93,6 +93,10 @@ const { value = {}, errors = [], submitLabel, cancelHref = '/admin' } = Astro.pr
       <div class="field"><label for="repo">Repository</label><input id="repo" name="repo" type="url" placeholder="https://github.com/…" value={value.repo ?? ''} /></div>
       <div class="field"><label for="docs">Docs</label><input id="docs" name="docs" type="url" placeholder="https://" value={value.docs ?? ''} /></div>
     </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="logoUrl">Logo image URL <span class="hint">· optional. Leave blank to pick it up from the website automatically</span></label>
+      <input id="logoUrl" name="logoUrl" type="url" placeholder="https://…/logo.svg" value={value.logoUrl ?? ''} />
+    </div>
   </div>
   <div class="form-actions">
     <a class="btn ghost" href={cancelHref}>Cancel</a>
