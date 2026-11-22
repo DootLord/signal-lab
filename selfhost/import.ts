@@ -1,0 +1,12 @@
+import { readFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
+import { validWorkspace, hydrateWorkspace } from '../app/lib/domain.ts';
+const file=process.argv[2];if(!file)throw Error('Usage: node selfhost/import.ts /path/to/workspace-export.json');
+const data=JSON.parse(readFileSync(file,'utf8'));if(!validWorkspace(data))throw Error('Invalid workspace export.');
+const databasePath=process.env.DATABASE_PATH||'/app/data/signal-lab.sqlite';mkdirSync(dirname(databasePath),{recursive:true});const db=new DatabaseSync(databasePath);
+db.exec('CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL)');
+if(db.prepare('SELECT id FROM workspaces LIMIT 1').get()&&!process.argv.includes('--replace-existing'))throw Error('Database already has saved data. Back it up before using --replace-existing.');
+const {revision,...body}=hydrateWorkspace(data);body.discovery!.schedule={label:'Configure a Coolify scheduled task for the scanner',enabled:false};
+db.prepare('INSERT INTO workspaces(id,data,updated_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').run('personal-workspace',JSON.stringify(body),randomUUID());db.close();console.log('Workspace import complete. Reload the site.');

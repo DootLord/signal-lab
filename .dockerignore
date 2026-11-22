@@ -1,0 +1,15 @@
+.git
+node_modules
+.sites-runtime
+.wrangler
+.vinext
+.next
+dist
+dist-selfhost
+outputs
+work
+.env*
+.dev.vars*
+*.pem
+*.sqlite*
+*.tar.gz
