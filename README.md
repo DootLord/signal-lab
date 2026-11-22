@@ -39,7 +39,14 @@ Data is stored in `./data/signal-lab.sqlite` (set `DATABASE_PATH` to change it).
 
 The image is built by GitHub Actions ([.github/workflows/docker.yml](.github/workflows/docker.yml)) on every push to `main` and published to `ghcr.io/dootlord/signal-lab`. Coolify only pulls it. The build tools are precompiled binaries that need AVX2, which the server's CPU (a Xeon E5-1620 v2) doesn't have; building there crashes with exit code 132. The running site is plain Node and works fine on that CPU.
 
-0. **One-time setup:** push to `main` and wait for the **Build image** workflow to finish. The image is then listed under your GitHub profile → Packages. Either make the package public (package settings → Change visibility), or add `ghcr.io` in Coolify → Keys & Tokens → Registries, with a GitHub token that has the `read:packages` scope.
+0. **One-time setup:** push to `main` and wait for the **Build image** workflow (repo → Actions) to finish successfully. The image then appears under your GitHub profile → Packages, as **private** by default. Then let the server pull it, using one of these:
+   - **Log the server in to the registry (keeps the image private).** Create a GitHub personal access token (classic) with only the `read:packages` scope. Then run this on the Coolify server, as the user Docker runs as (usually root):
+     ```bash
+     echo <token> | docker login ghcr.io -u <github-username> --password-stdin
+     ```
+   - **Make the package public:** package page → Package settings → Change visibility → Public. The image contains the site's source code but no secrets, because environment variables are only supplied at runtime.
+
+   A pull error of `denied` means one of these steps is missing, or the image hasn't been published yet.
 1. **New resource → Git repository**, build pack **Docker Compose** (it uses `docker-compose.yml`). In the resource's settings, turn **off** auto-deploy on push. GitHub Actions triggers the deploy instead, once the image is ready (step 6).
 2. Give the **signal-lab** service your domain, on port **3000**. Coolify's proxy handles HTTPS.
 3. **Environment variables:**
