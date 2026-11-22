@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import ToolCard from '../../components/ToolCard.astro';
+import KindBadge from '../../components/KindBadge.astro';
+import { getPublishedBySlug, related } from '../../lib/db.ts';
+
+const tool = getPublishedBySlug(Astro.params.slug ?? '');
+if (!tool) return new Response(null, { status: 404, statusText: 'Not found' });
+const more = related(tool);
+const host = (u: string) => new URL(u).host.replace(/^www\./, '');
+---
+<Base title={tool.name} description={tool.tagline}>
+  <div class="wrap">
+    <header class="tool-head">
+      <p class="small"><a href="/browse">← All tools</a></p>
+      <h1>{tool.name} <KindBadge kind={tool.kind} /></h1>
+      <p class="tagline">{tool.tagline}</p>
+      <div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
+    </header>
+
+    <div class="tool-layout">
+      <div>
+        <section class="panel">
+          <h2>What it is</h2>
+          <p>{tool.description}</p>
+        </section>
+        {tool.replaces && (
+          <section class="panel">
+            <h2>Instead of</h2>
+            <p>{tool.replaces}</p>
+          </section>
+        )}
+        {tool.useWhen && (
+          <section class="panel">
+            <h2>Reach for it when</h2>
+            <p>{tool.useWhen}</p>
+          </section>
+        )}
+        {tool.tryIt && (
+          <section class="panel">
+            <h2>Try it in a few minutes</h2>
+            <pre class="try"><code>{tool.tryIt}</code></pre>
+          </section>
+        )}
+      </div>
+      <aside>
+        <section class="panel">
+          <h2>Links</h2>
+          <ul class="links">
+            {tool.website && <li><a href={tool.website} rel="noopener">Website · {host(tool.website)}</a></li>}
+            {tool.repo && <li><a href={tool.repo} rel="noopener">Source · {host(tool.repo)}</a></li>}
+            {tool.docs && <li><a href={tool.docs} rel="noopener">Docs</a></li>}
+          </ul>
+        </section>
+        {Astro.locals.admin && <p class="small" style="margin-top:1rem"><a href={`/admin/tools/${tool.id}`}>Edit this card</a></p>}
+      </aside>
+    </div>
+
+    {more.length > 0 && (
+      <section class="section">
+        <h2>Related</h2>
+        <div class="cards">{more.map((t) => <ToolCard tool={t} />)}</div>
+      </section>
+    )}
+  </div>
+</Base>

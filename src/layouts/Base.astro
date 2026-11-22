@@ -1,0 +1,51 @@
+---
+import '../styles/global.css';
+
+interface Props { title?: string; description?: string; }
+const { title, description = 'Discover developer tools: what\'s new, and the gems you may have missed.' } = Astro.props;
+const fullTitle = title ? `${title} · Signal Lab` : 'Signal Lab · Find the tools you missed';
+const path = Astro.url.pathname;
+const kind = Astro.url.searchParams.get('kind');
+const current = (href: string, k?: string) =>
+  (path === href && (k === undefined ? !kind : kind === k)) ? 'page' : undefined;
+const q = path === '/browse' ? Astro.url.searchParams.get('q') ?? '' : '';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/rss+xml" title="Signal Lab" href="/feed.xml" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" />Signal Lab</a>
+        <nav class="nav" aria-label="Main">
+          <a href="/browse" aria-current={current('/browse')}>Browse</a>
+          <a href="/browse?kind=gem" aria-current={current('/browse', 'gem')}>Gems</a>
+          <a href="/browse?kind=new" aria-current={current('/browse', 'new')}>New</a>
+          {Astro.locals.admin && <a href="/admin" aria-current={path.startsWith('/admin') ? 'page' : undefined}>Admin</a>}
+        </nav>
+        <form class="header-search" action="/browse" role="search">
+          <label class="visually-hidden" for="site-search">Search tools</label>
+          <input id="site-search" type="search" name="q" placeholder="Search tools…" value={q} />
+        </form>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>Signal Lab: the tools you'd hear about from a good teammate.</span>
+        <span><a href="/feed.xml">RSS feed</a>{!Astro.locals.admin && <> · <a href="/admin">Admin</a></>}</span>
+      </div>
+    </footer>
+  </body>
+</html>

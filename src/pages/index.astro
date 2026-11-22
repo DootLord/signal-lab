@@ -1,0 +1,55 @@
+---
+import Base from '../layouts/Base.astro';
+import ToolCard from '../components/ToolCard.astro';
+import { listPublished, tagCounts } from '../lib/db.ts';
+
+const fresh = listPublished({ kind: 'new', limit: 6 });
+const gems = listPublished({ kind: 'gem', order: 'random', limit: 6 });
+const recent = listPublished({ limit: 6 });
+const tags = tagCounts().slice(0, 24);
+---
+<Base>
+  <section class="hero wrap">
+    <h1>Find the tools you'd hear about from a good teammate.</h1>
+    <p>What's new and moving in software development, plus the established gems that usually only spread by word of mouth.</p>
+    <form action="/browse" role="search">
+      <label class="visually-hidden" for="hero-search">Search tools</label>
+      <input id="hero-search" type="search" name="q" placeholder="Try “testing”, “python” or “replace nginx”" />
+      <button class="btn primary" type="submit">Search</button>
+    </form>
+  </section>
+
+  {fresh.total > 0 && (
+    <section class="section wrap">
+      <div class="section-head">
+        <div><h2>New &amp; moving</h2><p class="muted">Recently released or picking up momentum.</p></div>
+        <a href="/browse?kind=new">All new tools →</a>
+      </div>
+      <div class="cards">{fresh.tools.map((tool) => <ToolCard tool={tool} />)}</div>
+    </section>
+  )}
+
+  <section class="section wrap">
+    <div class="section-head">
+      <div><h2>Gems you might have missed</h2><p class="muted">Mature, well-loved, and somehow not on everyone's radar. A new mix every visit.</p></div>
+      <a href="/browse?kind=gem">All gems →</a>
+    </div>
+    {gems.total ? <div class="cards">{gems.tools.map((tool) => <ToolCard tool={tool} />)}</div> : <p class="empty">No gems yet.</p>}
+  </section>
+
+  {fresh.total === 0 && recent.total > 0 && (
+    <section class="section wrap">
+      <div class="section-head"><h2>Recently added</h2><a href="/browse">Browse everything →</a></div>
+      <div class="cards">{recent.tools.map((tool) => <ToolCard tool={tool} />)}</div>
+    </section>
+  )}
+
+  {tags.length > 0 && (
+    <section class="section wrap">
+      <h2>Browse by topic</h2>
+      <div class="tags">
+        {tags.map(({ tag, count }) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}<span class="count">{count}</span></a>)}
+      </div>
+    </section>
+  )}
+</Base>

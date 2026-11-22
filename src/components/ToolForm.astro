@@ -1,0 +1,58 @@
+---
+import type { ToolInput } from '../lib/db.ts';
+
+interface Props { value?: Partial<ToolInput>; errors?: string[]; submitLabel: string; }
+const { value = {}, errors = [], submitLabel } = Astro.props;
+---
+<form method="post">
+  <input type="hidden" name="_action" value="save" />
+  {errors.length > 0 && <div class="errors" role="alert"><ul>{errors.map((e) => <li>{e}</li>)}</ul></div>}
+  <div class="grid-2">
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" required maxlength="80" value={value.name ?? ''} />
+    </div>
+    <div class="field">
+      <label for="kind">Type</label>
+      <select id="kind" name="kind">
+        <option value="gem" selected={value.kind !== 'new'}>Gem: established but often missed</option>
+        <option value="new" selected={value.kind === 'new'}>New: recently released or gaining momentum</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label for="tagline">Tagline <span class="hint">One sentence: what is it?</span></label>
+    <input id="tagline" name="tagline" type="text" required maxlength="200" value={value.tagline ?? ''} />
+  </div>
+  <div class="field">
+    <label for="description">Description <span class="hint">A short paragraph on what it does and why it's good.</span></label>
+    <textarea id="description" name="description" required maxlength="2000">{value.description ?? ''}</textarea>
+  </div>
+  <div class="grid-2">
+    <div class="field">
+      <label for="replaces">Instead of <span class="hint">What people use today</span></label>
+      <input id="replaces" name="replaces" type="text" maxlength="300" value={value.replaces ?? ''} />
+    </div>
+    <div class="field">
+      <label for="tags">Tags <span class="hint">Comma separated, e.g. python, testing, cli</span></label>
+      <input id="tags" name="tags" type="text" maxlength="300" value={(value.tags ?? []).join(', ')} />
+    </div>
+  </div>
+  <div class="field">
+    <label for="useWhen">Reach for it when</label>
+    <textarea id="useWhen" name="useWhen" maxlength="600" rows="3">{value.useWhen ?? ''}</textarea>
+  </div>
+  <div class="field">
+    <label for="tryIt">Try it <span class="hint">Commands to get going in a few minutes</span></label>
+    <textarea id="tryIt" name="tryIt" class="code" maxlength="1500">{value.tryIt ?? ''}</textarea>
+  </div>
+  <div class="grid-2">
+    <div class="field"><label for="website">Website</label><input id="website" name="website" type="url" value={value.website ?? ''} /></div>
+    <div class="field"><label for="repo">Repository</label><input id="repo" name="repo" type="url" value={value.repo ?? ''} /></div>
+    <div class="field"><label for="docs">Docs</label><input id="docs" name="docs" type="url" value={value.docs ?? ''} /></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn primary" type="submit">{submitLabel}</button>
+    <slot />
+  </div>
+</form>

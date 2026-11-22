@@ -1,0 +1,83 @@
+---
+import Base from '../layouts/Base.astro';
+import ToolCard from '../components/ToolCard.astro';
+import { listPublished, tagCounts, kinds, type Kind } from '../lib/db.ts';
+
+const PAGE_SIZE = 24;
+const params = Astro.url.searchParams;
+const q = (params.get('q') ?? '').slice(0, 100);
+const tag = params.get('tag') ?? '';
+const kindParam = params.get('kind') ?? '';
+const kind = kinds.includes(kindParam as Kind) ? (kindParam as Kind) : undefined;
+const order = params.get('sort') === 'name' ? 'name' : 'recent';
+const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
+
+const { total, tools } = listPublished({ q, tag, kind, order, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
+const tags = tagCounts();
+const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+const link = (changes: Record<string, string | undefined>) => {
+  const next = new URLSearchParams(params);
+  next.delete('page');
+  for (const [k, v] of Object.entries(changes)) v ? next.set(k, v) : next.delete(k);
+  const s = next.toString();
+  return '/browse' + (s ? '?' + s : '');
+};
+const heading = kind === 'gem' ? 'Gems' : kind === 'new' ? 'New & moving' : 'All tools';
+---
+<Base title={tag ? `${tag} tools` : heading}>
+  <div class="wrap section">
+    <div class="section-head">
+      <div>
+        <h1>{heading}{tag && <> · <span class="muted">{tag}</span></>}</h1>
+        <p class="muted">{total} {total === 1 ? 'tool' : 'tools'}{q && <> matching “{q}”</>}</p>
+      </div>
+    </div>
+
+    <form class="filters" action="/browse">
+      <div class="field">
+        <label for="q">Search</label>
+        <input id="q" type="search" name="q" value={q} placeholder="Name, purpose, what it replaces…" />
+      </div>
+      <div class="field narrow">
+        <label for="kind">Type</label>
+        <select id="kind" name="kind">
+          <option value="">Everything</option>
+          <option value="gem" selected={kind === 'gem'}>Gems</option>
+          <option value="new" selected={kind === 'new'}>New</option>
+        </select>
+      </div>
+      <div class="field narrow">
+        <label for="sort">Sort</label>
+        <select id="sort" name="sort">
+          <option value="">Recently added</option>
+          <option value="name" selected={order === 'name'}>Name</option>
+        </select>
+      </div>
+      {tag && <input type="hidden" name="tag" value={tag} />}
+      <button class="btn primary" type="submit">Apply</button>
+    </form>
+
+    <div class="tags" style="margin-bottom:1.5rem">
+      {tag && <a class="tag active" href={link({ tag: undefined })}>{tag} ✕</a>}
+      {tags.filter((t) => t.tag !== tag).slice(0, 30).map((t) => <a class="tag" href={link({ tag: t.tag })}>{t.tag}<span class="count">{t.count}</span></a>)}
+    </div>
+
+    {tools.length ? (
+      <div class="cards">{tools.map((tool) => <ToolCard tool={tool} />)}</div>
+    ) : (
+      <div class="empty">
+        <p>Nothing matches that yet.</p>
+        <a class="btn" href="/browse">Clear filters</a>
+      </div>
+    )}
+
+    {pages > 1 && (
+      <nav class="pager" aria-label="Pages">
+        {page > 1 ? <a class="btn" href={link({ page: String(page - 1) })}>← Previous</a> : <span />}
+        <span class="muted small">Page {page} of {pages}</span>
+        {page < pages ? <a class="btn" href={link({ page: String(page + 1) })}>Next →</a> : <span />}
+      </nav>
+    )}
+  </div>
+</Base>

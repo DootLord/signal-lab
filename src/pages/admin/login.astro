@@ -1,0 +1,48 @@
+---
+import Base from '../../layouts/Base.astro';
+import { adminEnabled, checkPassword, isHttps, startSession } from '../../lib/auth.ts';
+
+// Basic brute-force brake: per-IP failure count with a cooldown.
+const failures: Map<string, { count: number; until: number }> = ((globalThis as any).__slLoginFailures ??= new Map());
+
+let error = '';
+const nextParam = Astro.url.searchParams.get('next') ?? '/admin';
+const next = nextParam.startsWith('/admin') ? nextParam : '/admin';
+
+if (Astro.locals.admin) return Astro.redirect(next);
+
+if (Astro.request.method === 'POST') {
+  const ip = Astro.request.headers.get('x-forwarded-for')?.split(',')[0].trim() || Astro.clientAddress;
+  const entry = failures.get(ip);
+  if (entry && entry.until > Date.now()) {
+    error = 'Too many attempts. Try again in a few minutes.';
+  } else {
+    const form = await Astro.request.formData();
+    if (checkPassword(String(form.get('password') ?? ''))) {
+      failures.delete(ip);
+      startSession(Astro.cookies, isHttps(Astro.request));
+      return Astro.redirect(next, 303);
+    }
+    const count = (entry?.count ?? 0) + 1;
+    failures.set(ip, { count, until: count >= 5 ? Date.now() + 5 * 60_000 : 0 });
+    error = 'Wrong password.';
+  }
+}
+---
+<Base title="Admin sign in">
+  <div class="wrap narrow-page">
+    <h1>Admin</h1>
+    {adminEnabled() ? (
+      <form method="post" class="stack">
+        {error && <div class="errors" role="alert">{error}</div>}
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
+        </div>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+    ) : (
+      <p class="notice">Admin is disabled. Set an <code>ADMIN_PASSWORD</code> environment variable (8+ characters) and restart the app.</p>
+    )}
+  </div>
+</Base>

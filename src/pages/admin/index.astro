@@ -1,0 +1,92 @@
+---
+import Base from '../../layouts/Base.astro';
+import KindBadge from '../../components/KindBadge.astro';
+import { listByStatus, recentScans } from '../../lib/db.ts';
+
+const pending = listByStatus('pending');
+const published = listByStatus('published');
+const rejected = listByStatus('rejected');
+const scans = recentScans(5);
+const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—');
+---
+<Base title="Admin">
+  <div class="wrap section">
+    <div class="section-head">
+      <h1>Admin</h1>
+      <div class="btn-row">
+        <a class="btn primary" href="/admin/tools/new">Add a tool</a>
+        <form method="post" action="/admin/logout"><button class="btn">Sign out</button></form>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2>Review queue <span class="muted">({pending.length})</span></h2>
+      <p class="muted">Suggestions from the scanner. Nothing appears on the site until you publish it.</p>
+      {pending.length === 0 ? <p class="empty">Nothing waiting. The scanner adds suggestions here when it runs.</p> : pending.map((t) => (
+        <article class="queue-item">
+          <h3><a href={`/admin/tools/${t.id}`}>{t.name}</a> <KindBadge kind={t.kind} /></h3>
+          <p>{t.tagline}</p>
+          {t.foundNote && <p class="why">{t.foundNote}{t.foundVia && <> · <a href={t.foundVia} rel="noopener">source</a></>}</p>}
+          <div class="btn-row">
+            <form method="post" action={`/admin/tools/${t.id}`}>
+              <input type="hidden" name="_action" value="publish" /><input type="hidden" name="back" value="/admin" />
+              <button class="btn primary">Publish</button>
+            </form>
+            <a class="btn" href={`/admin/tools/${t.id}`}>Edit first</a>
+            <form method="post" action={`/admin/tools/${t.id}`}>
+              <input type="hidden" name="_action" value="reject" /><input type="hidden" name="back" value="/admin" />
+              <button class="btn">Reject</button>
+            </form>
+          </div>
+        </article>
+      ))}
+    </section>
+
+    <section class="section">
+      <h2>Scanner runs</h2>
+      {scans.length === 0 ? <p class="muted">The scanner hasn't run yet. See the README for setting it up as a Coolify scheduled task.</p> : (
+        <div class="table-scroll">
+          <table class="admin-table">
+            <thead><tr><th>Started</th><th>Candidates</th><th>Suggested</th><th>Result</th></tr></thead>
+            <tbody>
+              {scans.map((s) => (
+                <tr>
+                  <td>{fmt(s.started_at)}</td><td>{s.candidates}</td><td>{s.suggested}</td>
+                  <td>{s.error ? <span style="color:var(--danger)">{s.error}</span> : s.finished_at ? 'OK' : 'Running or interrupted'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+
+    <section class="section">
+      <h2>Published <span class="muted">({published.length})</span></h2>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead><tr><th>Tool</th><th>Type</th><th>Tags</th><th>Updated</th></tr></thead>
+          <tbody>
+            {published.map((t) => (
+              <tr>
+                <td><a href={`/admin/tools/${t.id}`}>{t.name}</a></td>
+                <td><KindBadge kind={t.kind} /></td>
+                <td class="muted">{t.tags.join(', ')}</td>
+                <td class="muted">{fmt(t.updatedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {rejected.length > 0 && (
+      <section class="section">
+        <details>
+          <summary><strong>Rejected ({rejected.length})</strong> <span class="muted">· kept so the scanner doesn't suggest them again</span></summary>
+          <ul>{rejected.map((t) => <li><a href={`/admin/tools/${t.id}`}>{t.name}</a> <span class="muted">· {t.tagline}</span></li>)}</ul>
+        </details>
+      </section>
+    )}
+  </div>
+</Base>

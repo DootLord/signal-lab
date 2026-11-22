@@ -1,0 +1,25 @@
+---
+import Base from '../../../layouts/Base.astro';
+import ToolForm from '../../../components/ToolForm.astro';
+import { createTool, type ToolInput } from '../../../lib/db.ts';
+import { parseToolForm } from '../../../lib/forms.ts';
+
+let errors: string[] = [];
+let value: Partial<ToolInput> = { kind: 'gem' };
+if (Astro.request.method === 'POST') {
+  const result = parseToolForm(await Astro.request.formData());
+  if (result.ok) {
+    const tool = createTool(result.value, 'published');
+    return Astro.redirect(`/tools/${tool.slug}`, 303);
+  }
+  errors = result.errors;
+  value = result.value;
+}
+---
+<Base title="Add a tool">
+  <div class="wrap section" style="max-width:820px">
+    <p class="small"><a href="/admin">← Admin</a></p>
+    <h1>Add a tool</h1>
+    <ToolForm value={value} errors={errors} submitLabel="Publish" />
+  </div>
+</Base>
