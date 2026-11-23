@@ -6,6 +6,8 @@ services:
       - "3000"
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      # Public address used in canonical links, the sitemap and the RSS feed.
+      SITE_URL: ${SITE_URL:-https://signal-lab.fyi}
       SESSION_SECRET: ${SESSION_SECRET:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       # Scanner model: any OpenAI-compatible API. Defaults to OpenAI.

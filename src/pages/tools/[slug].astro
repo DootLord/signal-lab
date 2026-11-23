@@ -1,13 +1,14 @@
 ---
+import { AUTHOR, SITE_NAME, abs, breadcrumbs, clip, topicPath } from '../../lib/site.ts';
 import Base from '../../layouts/Base.astro';
 import ToolCard from '../../components/ToolCard.astro';
 import KindBadge from '../../components/KindBadge.astro';
 import ToolLogo from '../../components/ToolLogo.astro';
 import Recommend from '../../components/Recommend.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
-import { getPublishedBySlug, getVote, publishedSlugs, related, slugify } from '../../lib/db.ts';
+import { getPublishedBySlug, getVote, publishedSlugs, related, slugify, tagCounts } from '../../lib/db.ts';
 import { voterId } from '../../lib/votes.ts';
-import { formatDate, host, lines, pairs } from '../../lib/format.ts';
+import { formatDate, host, lines, pairs, topicLabel } from '../../lib/format.ts';
 import { renderInline, renderMarkdown } from '../../lib/markdown.ts';
 import {
   ArrowUpRight, BookOpen, FolderGit2, Globe, Pencil,
@@ -43,8 +44,58 @@ const toc = [
   tool.tryIt && { id: 'try-it', label: 'Try it' },
   alternatives.length && { id: 'alternatives', label: 'Alternatives' },
 ].filter((x): x is { id: string; label: string } => !!x);
+
+// Search metadata. The title leads with the tool's name and what it does, since
+// that's what people search for; the description is the full summary.
+const path = `/tools/${tool.slug}`;
+const headline = `${tool.name}: ${tool.tagline.replace(/\.$/, '')}`;
+const pageTitle = headline.length + SITE_NAME.length + 3 <= 70 ? `${headline} · ${SITE_NAME}` : headline;
+const description = clip(tool.description || tool.tagline);
+// The breadcrumb topic is the tool's most widely used tag, e.g. CLI rather than JSON.
+const counts = new Map(tagCounts().map((t) => [t.tag, t.count]));
+const mainTopic = [...tool.tags].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0))[0];
+const trail = [
+  { name: SITE_NAME, path: '/' },
+  ...(mainTopic ? [{ name: topicLabel(mainTopic), path: topicPath(mainTopic) }] : [{ name: 'Browse', path: '/browse' }]),
+  { name: tool.name, path },
+];
+const spdx = tool.license && /^[A-Za-z0-9.+-]+$/.test(tool.license) ? `https://spdx.org/licenses/${tool.license}.html` : undefined;
+const schema = [
+  breadcrumbs(trail),
+  {
+    '@type': 'WebPage',
+    '@id': abs(path),
+    url: abs(path),
+    name: headline,
+    description,
+    datePublished: tool.publishedAt ?? tool.createdAt,
+    dateModified: tool.updatedAt,
+    isPartOf: { '@id': abs('/#website') },
+    about: { '@id': abs(path) + '#software' },
+    author: { '@type': 'Person', name: AUTHOR.name, url: AUTHOR.url },
+  },
+  {
+    '@type': 'SoftwareApplication',
+    '@id': abs(path) + '#software',
+    name: tool.name,
+    description: tool.tagline,
+    applicationCategory: 'DeveloperApplication',
+    url: tool.website ?? tool.repo,
+    sameAs: [tool.website, tool.repo, tool.docs].filter(Boolean),
+    keywords: tool.tags.join(', '),
+    ...(spdx && { license: spdx }),
+  },
+];
 ---
-<Base title={tool.name} description={`${tool.name}: ${tool.tagline}`} crumbs={[{ label: 'Browse', href: '/browse' }, { label: tool.name }]}>
+<Base
+  fullTitle={pageTitle}
+  description={description}
+  canonical={path}
+  ogType="article"
+  schema={schema}
+  topic={mainTopic}
+  crumbs={mainTopic ? [{ label: topicLabel(mainTopic), href: topicPath(mainTopic) }, { label: tool.name }] : [{ label: 'Browse', href: '/browse' }, { label: tool.name }]}
+>
   <header class="tool-hero">
     <ToolLogo tool={tool} eager />
     <div class="tool-hero-main">
@@ -167,7 +218,7 @@ const toc = [
       )}
       <section class="side-block">
         <h2>Topics</h2>
-        <div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
+        <div class="tags">{tool.tags.map((tag) => <a class="tag" href={topicPath(tag)}>{tag}</a>)}</div>
       </section>
     </aside>
   </div>

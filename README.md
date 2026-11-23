@@ -68,6 +68,7 @@ Coolify builds the image on the server from the [Dockerfile](Dockerfile). The se
    | Variable | Required | Purpose |
    |---|---|---|
    | `ADMIN_PASSWORD` | yes | Admin sign-in (8+ characters). Admin is disabled if unset. |
+   | `SITE_URL` | no | Public address used for canonical links, the sitemap, RSS and social previews (default `https://signal-lab.fyi`) |
    | `SCAN_LLM_KEY` | for the scanner | API key for the scanner's model (OpenAI by default) |
    | `SCAN_LLM_MODEL` | no | Model name (default `gpt-5-mini`) |
    | `SCAN_LLM_URL` | no | OpenAI-compatible API base URL (default `https://api.openai.com/v1`) |

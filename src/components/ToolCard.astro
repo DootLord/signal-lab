@@ -1,4 +1,5 @@
 ---
+import { topicPath } from '../lib/site.ts';
 import type { Tool } from '../lib/db.ts';
 import { host } from '../lib/format.ts';
 import KindBadge from './KindBadge.astro';
@@ -22,7 +23,7 @@ const source = tool.website ?? tool.repo;
   {tool.replaces && <p class="card-instead"><b>Instead of</b> {tool.replaces}</p>}
   <div class="card-foot">
     <div class="tags">
-      {tool.tags.slice(0, 3).map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+      {tool.tags.slice(0, 3).map((tag) => <a class="tag" href={topicPath(tag)}>{tag}</a>)}
     </div>
     <span class="card-meta"><RecPill tool={tool} /></span>
   </div>

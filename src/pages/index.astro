@@ -1,4 +1,5 @@
 ---
+import { AUTHOR, SITE_NAME, SITE_URL, abs, topicPath } from '../lib/site.ts';
 import Base from '../layouts/Base.astro';
 import ToolCard from '../components/ToolCard.astro';
 import ToolRow from '../components/ToolRow.astro';
@@ -18,10 +19,29 @@ const recent = listPublished({ limit: 6 });
 const topics = tagCounts().slice(0, 16);
 const quick = tagCounts().slice(0, 5);
 const latest = recent.tools[0];
+
+const description = `A hand-reviewed catalogue of ${stats.total} developer tools: what’s new and moving, and the established gems you’d usually only hear about from a teammate. Each with what it replaces and how to try it.`;
+const schema = [
+  {
+    '@type': 'WebSite',
+    '@id': abs('/#website'),
+    url: SITE_URL + '/',
+    name: SITE_NAME,
+    alternateName: 'signal-lab.fyi',
+    description,
+    inLanguage: 'en',
+    publisher: { '@type': 'Person', name: AUTHOR.name, url: AUTHOR.url },
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: abs('/browse?q={search_term_string}') },
+      'query-input': 'required name=search_term_string',
+    },
+  },
+];
 ---
-<Base nav="home">
+<Base nav="home" description={description} canonical="/" schema={schema}>
   <section class="hero">
-    <h1>Find the tools you’d hear about from a good teammate.</h1>
+    <h1>Find the developer tools you’d hear about from a good teammate.</h1>
     <p class="lede">What’s new and moving in software development, plus the established gems that usually only spread by word of mouth. Every entry is reviewed by a human.</p>
     <form class="hero-search" action="/browse" role="search">
       <label class="search">
@@ -34,7 +54,7 @@ const latest = recent.tools[0];
     {quick.length > 0 && (
       <div class="quick">
         <span>Popular topics:</span>
-        {quick.map(({ tag }) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+        {quick.map(({ tag }) => <a class="tag" href={topicPath(tag)}>{tag}</a>)}
       </div>
     )}
     {stats.total > 0 && (
@@ -67,7 +87,7 @@ const latest = recent.tools[0];
               {featured.useWhen && <div class="fact"><dt>Reach for it when</dt><dd>{featured.useWhen}</dd></div>}
             </dl>
           )}
-          <div class="tags">{featured.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
+          <div class="tags">{featured.tags.map((tag) => <a class="tag" href={topicPath(tag)}>{tag}</a>)}</div>
         </div>
         {featured.tryIt && (
           <div class="feature-side">
@@ -108,7 +128,7 @@ const latest = recent.tools[0];
       </div>
       <ul class="topic-index">
         {topics.map(({ tag, count }) => (
-          <li><a href={`/browse?tag=${encodeURIComponent(tag)}`}><strong>{topicLabel(tag)}</strong><span>{count}</span></a></li>
+          <li><a href={topicPath(tag)}><strong>{topicLabel(tag)}</strong><span>{count}</span></a></li>
         ))}
       </ul>
     </section>

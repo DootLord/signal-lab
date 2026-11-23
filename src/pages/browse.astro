@@ -5,6 +5,7 @@ import PageHead from '../components/PageHead.astro';
 import Empty from '../components/Empty.astro';
 import { listPublished, siteStats, tagCounts, kinds, type Kind } from '../lib/db.ts';
 import { plural, topicLabel } from '../lib/format.ts';
+import { topicPath } from '../lib/site.ts';
 import { ChevronDown, X } from '../components/icons.ts';
 
 const PAGE_SIZE = 24;
@@ -37,7 +38,7 @@ const pageLink = (p: number) => {
 };
 
 const nav: Nav = tag ? 'none' : kind === 'gem' ? 'gems' : kind === 'new' ? 'new' : 'browse';
-const title = q ? `Results for “${q}”` : tag ? `${topicLabel(tag)} tools` : kind === 'gem' ? 'Gems you might have missed' : kind === 'new' ? 'New & moving' : 'All tools';
+const title = q ? `Results for “${q}”` : tag ? `${topicLabel(tag)} tools` : kind === 'gem' ? 'Established developer tools you might have missed' : kind === 'new' ? 'New developer tools gaining momentum' : 'All developer tools';
 const description = tag
   ? `Every tool tagged ${topicLabel(tag)}. Narrow it down with a type filter or a search.`
   : kind === 'gem'
@@ -46,8 +47,14 @@ const description = tag
     ? 'Recently released tools, or ones picking up momentum right now.'
     : 'Every tool in the catalogue. Filter by type or topic, or search by name, purpose or what it replaces.';
 const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicLabel(tag) }] : kind ? [{ label: kind === 'gem' ? 'Gems' : 'New' }] : [])];
+// Search results stay out of the index. A topic filter's real home is its topic
+// page; otherwise the canonical URL keeps only the type filter and page number.
+const canonical = tag
+  ? topicPath(tag)
+  : '/browse' + (kind || page > 1 ? '?' + new URLSearchParams({ ...(kind && { kind }), ...(page > 1 && { page: String(page) }) }).toString() : '');
+const noindex = !!q || total === 0;
 ---
-<Base title={title} nav={nav} topic={tag || undefined} crumbs={crumbs} query={q} description={description}>
+<Base title={page > 1 ? `${title} (page ${page})` : title} nav={nav} topic={tag || undefined} crumbs={crumbs} query={q} description={description} canonical={canonical} noindex={noindex}>
   <PageHead title={title} description={description} />
 
   <div class="browse">

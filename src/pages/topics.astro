@@ -1,4 +1,5 @@
 ---
+import { topicPath } from '../lib/site.ts';
 import Base from '../layouts/Base.astro';
 import PageHead from '../components/PageHead.astro';
 import Empty from '../components/Empty.astro';
@@ -7,12 +8,12 @@ import { plural, topicLabel } from '../lib/format.ts';
 
 const topics = tagCounts().map((t) => ({ ...t, samples: listPublished({ tag: t.tag, order: 'name', limit: 4 }).tools.map((x) => x.name) }));
 ---
-<Base title="Topics" nav="topics" crumbs={[{ label: 'Topics' }]} description="Browse developer tools by language, ecosystem and category.">
-  <PageHead title="All topics" description={`${plural(topics.length, 'topic')} across languages, ecosystems and categories. Pick one to see every tool tagged with it.`} />
+<Base title="Developer tools by topic" nav="topics" crumbs={[{ label: 'Topics' }]} description={`Browse ${plural(topics.length, 'topic')} of hand-reviewed developer tools by language, ecosystem and category: CLI, testing, DevOps, AI, Python, Rust and more.`}>
+  <PageHead title="Developer tools by topic" description={`${plural(topics.length, 'topic')} across languages, ecosystems and categories. Pick one to see every tool tagged with it.`} />
   {topics.length ? (
     <div class="topic-entries">
       {topics.map(({ tag, count, samples }) => (
-        <a class="topic-entry" href={`/browse?tag=${encodeURIComponent(tag)}`}>
+        <a class="topic-entry" href={topicPath(tag)}>
           <strong>{topicLabel(tag)}</strong><span class="count">{plural(count, 'tool')}</span>
           <span class="samples">{samples.join(', ')}{count > samples.length && ' and more'}</span>
         </a>

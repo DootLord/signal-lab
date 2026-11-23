@@ -4,6 +4,7 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
 import { siteStats, tagCounts } from '../lib/db.ts';
 import { topicLabel } from '../lib/format.ts';
+import { SITE_NAME, abs, jsonLd, topicPath } from '../lib/site.ts';
 import BrandMark from '../components/BrandMark.astro';
 import {
   ChevronRight, Gem, House, Inbox, Info, LayoutGrid, Lock, Menu, Moon, Rss, Search, Sun, TrendingUp,
@@ -12,15 +13,30 @@ import {
 export type Nav = 'home' | 'browse' | 'gems' | 'new' | 'topics' | 'about' | 'admin' | 'none';
 interface Props {
   title?: string;
+  /** Use this exact <title> instead of "title · Signal Lab". */
+  fullTitle?: string;
   description?: string;
   nav?: Nav;
   topic?: string;
   crumbs?: { label: string; href?: string }[];
   query?: string;
+  /** Site path of the canonical URL. Defaults to the current path without its query string. */
+  canonical?: string;
+  /** Keep the page out of search results (search results, admin, thin pages). */
+  noindex?: boolean;
+  ogType?: 'website' | 'article';
+  /** Structured data for the page, as a JSON-LD object or @graph items. */
+  schema?: Record<string, unknown>[];
 }
-const { title, description = 'Discover developer tools worth knowing: what’s new and moving, and the established gems you may have missed.', nav = 'none', topic, crumbs = [], query = '' } = Astro.props;
-const fullTitle = title ? `${title} · Signal Lab` : 'Signal Lab · Developer tools worth knowing';
-const canonical = new URL(Astro.url.pathname + Astro.url.search, Astro.url.origin).toString();
+const {
+  title, description = 'Discover developer tools worth knowing: what’s new and moving, and the established gems you may have missed. Every tool reviewed by hand.',
+  nav = 'none', topic, crumbs = [], query = '', canonical: canonicalPath, noindex = false, ogType = 'website', schema = [],
+} = Astro.props;
+const fullTitle = Astro.props.fullTitle ?? (title ? `${title} · ${SITE_NAME}` : `${SITE_NAME}: developer tools worth knowing, new and overlooked`);
+const canonical = abs(canonicalPath ?? Astro.url.pathname);
+const ogImage = abs('/og.png');
+const robots = noindex || Astro.url.pathname.startsWith('/admin') ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1';
+const structured = schema.length ? jsonLd({ '@context': 'https://schema.org', '@graph': schema }) : '';
 const stats = siteStats();
 const topTopics = tagCounts().slice(0, 7);
 const admin = Astro.locals.admin;
@@ -33,17 +49,28 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    <meta name="robots" content={robots} />
     <link rel="canonical" href={canonical} />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Signal Lab" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:locale" content="en_GB" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Signal Lab: developer tools worth knowing" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#111213" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="alternate" type="application/rss+xml" title="Signal Lab" href="/feed.xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="alternate" type="application/rss+xml" title="Signal Lab: new developer tools" href={abs('/feed.xml')} />
+    {structured && <script type="application/ld+json" set:html={structured} />}
     <script is:inline>
       (function () {
         var t;
@@ -74,7 +101,7 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
           <nav aria-label="Topics">
             <div class="nav-label">Topics</div>
             {topTopics.map(({ tag, count }) => (
-              <a class="nav-item" href={`/browse?tag=${encodeURIComponent(tag)}`} aria-current={topic === tag ? 'page' : undefined}>
+              <a class="nav-item" href={topicPath(tag)} aria-current={topic === tag ? 'page' : undefined}>
                 {topicLabel(tag)} <span class="nav-count">{count}</span>
               </a>
             ))}

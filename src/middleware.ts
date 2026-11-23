@@ -32,5 +32,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-Frame-Options', 'DENY');
   if (adminArea) response.headers.set('Cache-Control', 'no-store');
+  if (adminArea || url.pathname.endsWith('/vote')) response.headers.set('X-Robots-Tag', 'noindex');
   return response;
 });

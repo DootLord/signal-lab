@@ -1,0 +1,95 @@
+---
+import Base from '../../layouts/Base.astro';
+import ToolCard from '../../components/ToolCard.astro';
+import { listPublished, normalizeTag, tagCounts } from '../../lib/db.ts';
+import { plural, topicLabel } from '../../lib/format.ts';
+import { abs, breadcrumbs, clip, topicPath } from '../../lib/site.ts';
+import { topicIntro } from '../../lib/topics.ts';
+
+// A landing page per topic, e.g. /topics/cli: "CLI tools worth knowing".
+let raw = Astro.params.tag ?? '';
+try { raw = decodeURIComponent(raw); } catch { /* already decoded */ }
+const tag = normalizeTag(raw);
+const { total, tools } = tag ? listPublished({ tag, order: 'top', limit: 500 }) : { total: 0, tools: [] };
+if (!total) return new Response(null, { status: 404, statusText: 'Not found' });
+// One URL per topic: /topics/CLI and /topics/cli/ both go to /topics/cli.
+if (raw !== tag) return Astro.redirect(topicPath(tag), 301);
+
+const label = topicLabel(tag);
+const gems = tools.filter((t) => t.kind === 'gem');
+const fresh = tools.filter((t) => t.kind === 'new');
+const counts = new Map(tagCounts().map((t) => [t.tag, t.count]));
+
+// Topics that often appear alongside this one, for internal links.
+const near = new Map<string, number>();
+for (const t of tools) for (const other of t.tags) if (other !== tag && (counts.get(other) ?? 0) > 1) near.set(other, (near.get(other) ?? 0) + 1);
+const nearby = [...near.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 12);
+
+const year = new Date().getUTCFullYear();
+const names = tools.slice(0, 3).map((t) => t.name);
+const nameList = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+const title = `${label} tools worth knowing in ${year}`;
+const description = clip(`${plural(total, `hand-reviewed ${label} tool`)} for developers, including ${nameList}. What each replaces, when to use it and how to try it.`);
+const path = topicPath(tag);
+
+const schema = [
+  breadcrumbs([{ name: 'Signal Lab', path: '/' }, { name: 'Topics', path: '/topics' }, { name: label, path }]),
+  {
+    '@type': 'CollectionPage',
+    '@id': abs(path),
+    url: abs(path),
+    name: title,
+    description,
+    isPartOf: { '@id': abs('/#website') },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: total,
+      itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: abs(`/tools/${t.slug}`), name: t.name })),
+    },
+  },
+];
+---
+<Base
+  title={title}
+  description={description}
+  topic={tag}
+  canonical={path}
+  noindex={total < 2}
+  schema={schema}
+  crumbs={[{ label: 'Topics', href: '/topics' }, { label }]}
+>
+  <header class="page-head">
+    <div>
+      <h1>{label} tools worth knowing</h1>
+      <p>{topicIntro(tag, label, total)}</p>
+      <p class="small">{plural(total, 'tool')}{gems.length && fresh.length ? `: ${plural(gems.length, 'established gem')} and ${fresh.length} new` : ''}. Sorted by how many developers recommend them.</p>
+    </div>
+    <a class="btn" href={`/browse?tag=${encodeURIComponent(tag)}`}>Search and filter</a>
+  </header>
+
+  {gems.length > 0 && fresh.length > 0 ? (
+    <>
+      <section class="section" style="margin-top:0" aria-labelledby="gems-title">
+        <div class="section-head"><div><h2 id="gems-title">Established {label} gems</h2><p>Mature and well maintained, but easy to miss.</p></div></div>
+        <div class="grid">{gems.map((tool) => <ToolCard tool={tool} />)}</div>
+      </section>
+      <section class="section" aria-labelledby="new-title">
+        <div class="section-head"><div><h2 id="new-title">New &amp; moving</h2><p>Recently released, or picking up momentum.</p></div></div>
+        <div class="grid">{fresh.map((tool) => <ToolCard tool={tool} />)}</div>
+      </section>
+    </>
+  ) : (
+    <div class="grid">{tools.map((tool) => <ToolCard tool={tool} />)}</div>
+  )}
+
+  {nearby.length > 0 && (
+    <section class="section" aria-labelledby="related-title">
+      <div class="section-head"><div><h2 id="related-title">Related topics</h2><p>Topics that often go with {label}.</p></div></div>
+      <ul class="topic-index">
+        {nearby.map(([other]) => (
+          <li><a href={topicPath(other)}><strong>{topicLabel(other)}</strong><span>{counts.get(other)}</span></a></li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Base>
