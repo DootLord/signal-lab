@@ -119,7 +119,7 @@ const quick = tagCounts().slice(0, 5);
   {recent.total > 0 && (
     <section class="section">
       <div class="section-head">
-        <div><h2>Recently added</h2><p>The latest additions to the catalogue.</p></div>
+        <div><h2>Recently added</h2><p>Newest first, gems and new tools together.</p></div>
         <a class="see-all" href="/browse">Browse everything <ArrowRight size={15} /></a>
       </div>
       <div class="rows">{recent.tools.map((tool) => <ToolRow tool={tool} />)}</div>
@@ -129,8 +129,8 @@ const quick = tagCounts().slice(0, 5);
   <section class="section">
     <div class="cta">
       <div>
-        <h2><Gem size={18} style="display:inline;vertical-align:-3px;color:var(--accent)" /> Stay in the loop</h2>
-        <p>New tools are added as they’re reviewed. Follow along with the RSS feed in your reader of choice.</p>
+        <h2><Gem size={18} style="display:inline;vertical-align:-3px;color:var(--accent)" /> New tools by RSS</h2>
+        <p>Tools are added as they’re reviewed. The feed lists the 50 most recent.</p>
       </div>
       <div class="btn-row">
         <a class="btn primary" href="/feed.xml">Subscribe via RSS</a>

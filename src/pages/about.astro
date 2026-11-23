@@ -8,7 +8,7 @@ const stats = siteStats();
 ---
 <Base title="About" nav="about" crumbs={[{ label: 'About' }]} description="What Signal Lab is, how tools are found and how they're chosen.">
   <div class="about">
-    <PageHead eyebrow="About" title="Tools worth knowing, without the noise" />
+    <PageHead eyebrow="About" title="Tools worth knowing, picked by hand" />
     <div class="prose">
       <p>Most developers learn about their best tools from a colleague: someone leans over and says “wait, you’re not using <em>that</em>?” Signal Lab tries to be that colleague. It is a hand-reviewed catalogue of {stats.total} developer tools, covering what’s new and the established gems that rarely get a launch post.</p>
       <p>Every entry answers the same practical questions: what it is, what it replaces, when you’d reach for it, and how to try it in a few minutes.</p>
@@ -18,7 +18,7 @@ const stats = siteStats();
     <div class="kind-compare">
       <div class="kind-box">
         <span class="badge gem"><Gem size={12} stroke-width={2.4} /> Gem</span>
-        <p>Established, well-loved and actively maintained, yet often missed. Age is a feature here: these tools have proven themselves. You’d usually hear about them from a teammate rather than a headline.</p>
+        <p>Established, well-loved and actively maintained, yet often missed. They’ve been around long enough to prove themselves, and you’d usually hear about them from a teammate rather than a headline.</p>
       </div>
       <div class="kind-box">
         <span class="badge new"><Sparkles size={12} stroke-width={2.4} /> New</span>
@@ -31,7 +31,7 @@ const stats = siteStats();
       <li><span><strong>Discovery.</strong> A scanner regularly looks at rising GitHub projects, mature and actively maintained repositories across rotating topics, and well-received Show HN posts.</span></li>
       <li><span><strong>Shortlisting.</strong> An AI model reads each candidate’s README, filters out noise (tutorials, demos, abandoned projects, household names) and drafts a card for the promising ones.</span></li>
       <li><span><strong>Human review.</strong> Nothing is published automatically. Every suggestion is checked, edited or rejected by hand. Rejected tools are remembered so they don’t come back.</span></li>
-      <li><span><strong>Links you can trust.</strong> Website and source links come from GitHub or Hacker News data, never from the model, so nothing is invented.</span></li>
+      <li><span><strong>Sourced links.</strong> Website and source links come from GitHub or Hacker News data, never from the model, so it can’t invent a URL.</span></li>
       <li><span><strong>Your verdict.</strong> Every tool page asks whether you’d recommend it. No account needed, and the share of developers who would is shown on the page.</span></li>
     </ol>
 
