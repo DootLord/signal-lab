@@ -10,7 +10,7 @@ import { voterId } from '../../lib/votes.ts';
 import { formatDate, host, lines, pairs } from '../../lib/format.ts';
 import { renderInline, renderMarkdown } from '../../lib/markdown.ts';
 import {
-  ArrowRight, ArrowUpRight, BookOpen, Check, CircleAlert, CircleCheck, Clock, FolderGit2, Globe, Info, Layers, Pencil, Repeat, Terminal, Zap,
+  ArrowUpRight, BookOpen, FolderGit2, Globe, Pencil,
 } from '../../components/icons.ts';
 
 const tool = getPublishedBySlug(Astro.params.slug ?? '');
@@ -50,7 +50,6 @@ const toc = [
     <div class="tool-hero-main">
       <div class="badges">
         <KindBadge kind={tool.kind} />
-        {tool.tags.slice(0, 2).map((tag) => <span class="badge neutral">{tag}</span>)}
       </div>
       <h1>{tool.name}</h1>
       <p class="tagline">{tool.tagline}</p>
@@ -65,74 +64,71 @@ const toc = [
 
   <div class="tool-layout">
     <div>
-      <section class="panel" id="overview">
-        <div class="panel-head"><Info size={17} /><h2>Overview</h2></div>
-        <div class="panel-body prose"><p>{tool.description}</p></div>
+      <section class="doc" id="overview">
+        <h2 class="visually-hidden">Overview</h2>
+        <p class="lead">{tool.description}</p>
+        {(tool.replaces || tool.useWhen) && (
+          <dl class="callouts">
+            {tool.replaces && <div><dt>Instead of</dt><dd>{tool.replaces}</dd></div>}
+            {tool.useWhen && <div><dt>Reach for it when</dt><dd>{tool.useWhen}</dd></div>}
+          </dl>
+        )}
       </section>
 
-      {(tool.replaces || tool.useWhen) && (
-        <div class="callouts">
-          {tool.replaces && <div class="callout instead"><h3><Repeat size={15} /> Instead of</h3><p>{tool.replaces}</p></div>}
-          {tool.useWhen && <div class="callout when"><h3><Clock size={15} /> Reach for it when</h3><p>{tool.useWhen}</p></div>}
-        </div>
-      )}
-
       {features.length > 0 && (
-        <section class="panel" id="features">
-          <div class="panel-head"><Zap size={17} /><h2>Key features</h2></div>
-          <div class="panel-body">
-            <ul class="feature-list">
-              {features.map((f) => (
-                <li>
-                  <span class="feature-check"><Check size={14} stroke-width={2.6} /></span>
-                  <div>{f.title && <strong>{f.title}</strong>}<p set:html={renderInline(f.text)} /></div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <section class="doc" id="features">
+          <h2>Key features</h2>
+          <ul class="feature-list">
+            {features.map((f) => (
+              <li>{f.title && <strong>{f.title}</strong>}<p set:html={renderInline(f.text)} /></li>
+            ))}
+          </ul>
         </section>
       )}
 
       {bodyHtml && (
-        <section class="panel" id="in-depth">
-          <div class="panel-head"><BookOpen size={17} /><h2>In depth</h2></div>
-          <div class="panel-body prose md" set:html={bodyHtml} />
+        <section class="doc" id="in-depth">
+          <h2>In depth</h2>
+          <div class="prose md" set:html={bodyHtml} />
         </section>
       )}
 
       {(strengths.length > 0 || limitations.length > 0) && (
-        <div class="pros-cons" id="trade-offs">
-          {strengths.length > 0 && (
-            <section class="callout pros">
-              <h3><CircleCheck size={15} /> Strengths</h3>
-              <ul>{strengths.map((s) => <li set:html={renderInline(s)} />)}</ul>
-            </section>
-          )}
-          {limitations.length > 0 && (
-            <section class="callout cons">
-              <h3><CircleAlert size={15} /> Watch out for</h3>
-              <ul>{limitations.map((s) => <li set:html={renderInline(s)} />)}</ul>
-            </section>
-          )}
-        </div>
+        <section class="doc" id="trade-offs">
+          <h2 class="visually-hidden">Strengths and watch-outs</h2>
+          <div class="pros-cons">
+            {strengths.length > 0 && (
+              <div class="pros">
+                <h3>Strengths</h3>
+                <ul>{strengths.map((s) => <li set:html={renderInline(s)} />)}</ul>
+              </div>
+            )}
+            {limitations.length > 0 && (
+              <div class="cons">
+                <h3>Watch out for</h3>
+                <ul>{limitations.map((s) => <li set:html={renderInline(s)} />)}</ul>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {tool.tryIt && (
-        <section class="panel" id="try-it">
-          <div class="panel-head"><Terminal size={17} /><h2>Try it in a few minutes</h2></div>
-          <div class="panel-body"><CodeBlock code={tool.tryIt} /></div>
+        <section class="doc" id="try-it">
+          <h2>Try it in a few minutes</h2>
+          <CodeBlock code={tool.tryIt} />
         </section>
       )}
 
       {alternatives.length > 0 && (
-        <section class="panel" id="alternatives">
-          <div class="panel-head"><Layers size={17} /><h2>Alternatives</h2></div>
+        <section class="doc" id="alternatives">
+          <h2>Alternatives</h2>
           <div class="alt-list">
             {alternatives.map((a) => (
               <div class="alt">
                 <div class="alt-name">
-                  {a.href ? <a class="link" href={a.href}>{a.title}</a> : <strong>{a.title}</strong>}
-                  {a.href && <span class="badge accent">In catalogue</span>}
+                  {a.href ? <a class="link" href={a.href}>{a.title}</a> : <span>{a.title}</span>}
+                  {a.href && <span class="badge accent">On Signal Lab</span>}
                 </div>
                 <p set:html={renderInline(a.text)} />
               </div>
@@ -142,39 +138,36 @@ const toc = [
       )}
     </div>
 
-    <aside class="aside-card">
-      <section class="panel">
-        <div class="panel-body">
-          <dl class="facts">
-            <div><dt>Type</dt><dd><KindBadge kind={tool.kind} /></dd></div>
-            {tool.license && <div><dt>License</dt><dd>{tool.license}</dd></div>}
-            {tool.language && <div><dt>Written in</dt><dd>{tool.language}</dd></div>}
-            <div><dt>Added</dt><dd>{formatDate(tool.publishedAt ?? tool.createdAt)}</dd></div>
-            <div><dt>Last updated</dt><dd>{formatDate(tool.updatedAt)}</dd></div>
-          </dl>
-        </div>
+    <aside class="aside">
+      <section class="side-block">
+        <h2>At a glance</h2>
+        <dl class="facts">
+          <div><dt>Type</dt><dd><KindBadge kind={tool.kind} /></dd></div>
+          {tool.license && <div><dt>License</dt><dd>{tool.license}</dd></div>}
+          {tool.language && <div><dt>Written in</dt><dd>{tool.language}</dd></div>}
+          <div><dt>Added</dt><dd>{formatDate(tool.publishedAt ?? tool.createdAt)}</dd></div>
+          <div><dt>Last updated</dt><dd>{formatDate(tool.updatedAt)}</dd></div>
+        </dl>
       </section>
       {toc.length > 2 && (
-        <nav class="panel toc" aria-label="On this page">
-          <div class="panel-head"><h2>On this page</h2></div>
-          <ul>{toc.map((t) => <li><a href={`#${t.id}`}><ArrowRight size={13} /> {t.label}</a></li>)}</ul>
+        <nav class="side-block toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <ul>{toc.map((t) => <li><a href={`#${t.id}`}>{t.label}</a></li>)}</ul>
         </nav>
       )}
       {links.length > 0 && (
-        <section class="panel">
-          <div class="panel-head"><h2>Links</h2></div>
-          <div class="panel-body">
-            <ul class="link-list">
-              {links.map((l) => (
-                <li><a href={l.href} rel="noopener" target="_blank"><l.Icon size={17} /><span>{l.label}<small>{host(l.href)}</small></span><ArrowUpRight size={15} class="muted" /></a></li>
-              ))}
-            </ul>
-          </div>
+        <section class="side-block">
+          <h2>Links</h2>
+          <ul class="link-list">
+            {links.map((l) => (
+              <li><a href={l.href} rel="noopener" target="_blank"><l.Icon size={16} /><span>{l.label}<small>{host(l.href)}</small></span><ArrowUpRight size={14} /></a></li>
+            ))}
+          </ul>
         </section>
       )}
-      <section class="panel">
-        <div class="panel-head"><h2>Topics</h2></div>
-        <div class="panel-body"><div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div></div>
+      <section class="side-block">
+        <h2>Topics</h2>
+        <div class="tags">{tool.tags.map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}</div>
       </section>
     </aside>
   </div>

@@ -1,7 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { adminEnabled, checkPassword, isHttps, startSession } from '../../lib/auth.ts';
-import { CircleAlert, Lock } from '../../components/icons.ts';
+import BrandMark from '../../components/BrandMark.astro';
+import { CircleAlert } from '../../components/icons.ts';
 
 // Basic brute-force brake: per-IP failure count with a cooldown.
 const failures: Map<string, { count: number; until: number }> = ((globalThis as any).__slLoginFailures ??= new Map());
@@ -34,7 +35,7 @@ if (Astro.request.method === 'POST') {
   <div class="auth-wrap">
     <div class="panel auth-card">
       <div class="panel-body">
-        <span class="brand-mark"><Lock size={18} /></span>
+        <BrandMark size={20} />
         <h1>Admin sign in</h1>
         <p>Review scanner suggestions and manage the catalogue.</p>
         {adminEnabled() ? (

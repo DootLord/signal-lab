@@ -21,7 +21,7 @@ if (Astro.request.method === 'POST') {
 ---
 <Base title="Add a tool" nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Add a tool' }]}>
   <div style="max-width:880px">
-    <PageHead eyebrow="Admin" title="Add a tool" description="Tools you add here are published straight away." />
+    <PageHead title="Add a tool" description="Tools you add here are published straight away." />
     <ToolForm value={value} errors={errors} submitLabel="Publish tool" />
   </div>
 </Base>

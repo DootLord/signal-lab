@@ -3,10 +3,9 @@ import Base, { type Nav } from '../layouts/Base.astro';
 import ToolCard from '../components/ToolCard.astro';
 import PageHead from '../components/PageHead.astro';
 import Empty from '../components/Empty.astro';
-import TopicIcon from '../components/TopicIcon.astro';
 import { listPublished, siteStats, tagCounts, kinds, type Kind } from '../lib/db.ts';
 import { plural, topicLabel } from '../lib/format.ts';
-import { ArrowLeft, ArrowRight, ChevronDown, Gem, LayoutGrid, Sparkles, X } from '../components/icons.ts';
+import { ChevronDown, X } from '../components/icons.ts';
 
 const PAGE_SIZE = 24;
 const params = Astro.url.searchParams;
@@ -49,16 +48,16 @@ const description = tag
 const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicLabel(tag) }] : kind ? [{ label: kind === 'gem' ? 'Gems' : 'New' }] : [])];
 ---
 <Base title={title} nav={nav} topic={tag || undefined} crumbs={crumbs} query={q} description={description}>
-  <PageHead eyebrow="Browse" title={title} description={description} />
+  <PageHead title={title} description={description} />
 
   <div class="browse">
     <aside class="filters" aria-label="Filters">
       <div class="filter-group">
         <h3>Type</h3>
         <div class="filter-list">
-          <a class="filter-link" href={link({ kind: undefined })} aria-current={!kind ? 'true' : undefined}><LayoutGrid size={16} /> Everything <span class="nav-count">{stats.total}</span></a>
-          <a class="filter-link" href={link({ kind: 'gem' })} aria-current={kind === 'gem' ? 'true' : undefined}><Gem size={16} /> Gems <span class="nav-count">{stats.gems}</span></a>
-          <a class="filter-link" href={link({ kind: 'new' })} aria-current={kind === 'new' ? 'true' : undefined}><Sparkles size={16} /> New <span class="nav-count">{stats.fresh}</span></a>
+          <a class="filter-link" href={link({ kind: undefined })} aria-current={!kind ? 'true' : undefined}>Everything <span class="nav-count">{stats.total}</span></a>
+          <a class="filter-link" href={link({ kind: 'gem' })} aria-current={kind === 'gem' ? 'true' : undefined}>Gems <span class="nav-count">{stats.gems}</span></a>
+          <a class="filter-link" href={link({ kind: 'new' })} aria-current={kind === 'new' ? 'true' : undefined}>New <span class="nav-count">{stats.fresh}</span></a>
         </div>
       </div>
       <div class="filter-group">
@@ -66,7 +65,7 @@ const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicL
         <div class="filter-list">
           {topics.map((t) => (
             <a class="filter-link" href={link({ tag: t.tag === tag ? undefined : t.tag })} aria-current={t.tag === tag ? 'true' : undefined}>
-              <TopicIcon tag={t.tag} size={16} /> {topicLabel(t.tag)} <span class="nav-count">{t.count}</span>
+              {topicLabel(t.tag)} <span class="nav-count">{t.count}</span>
             </a>
           ))}
         </div>
@@ -108,9 +107,9 @@ const crumbs = [{ label: 'Browse', href: '/browse' }, ...(tag ? [{ label: topicL
 
       {pages > 1 && (
         <nav class="pager" aria-label="Pagination">
-          {page > 1 ? <a class="btn" href={pageLink(page - 1)}><ArrowLeft size={16} /> Previous</a> : <span />}
+          {page > 1 ? <a class="btn" href={pageLink(page - 1)}>Previous page</a> : <span />}
           <span class="muted small">Page {page} of {pages}</span>
-          {page < pages ? <a class="btn" href={pageLink(page + 1)}>Next <ArrowRight size={16} /></a> : <span />}
+          {page < pages ? <a class="btn" href={pageLink(page + 1)}>Next page</a> : <span />}
         </nav>
       )}
     </section>

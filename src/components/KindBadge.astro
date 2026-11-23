@@ -1,10 +1,9 @@
 ---
 import type { Kind } from '../lib/db.ts';
-import { Gem, Sparkles } from './icons.ts';
 
 interface Props { kind: Kind; }
 const { kind } = Astro.props;
 ---
 {kind === 'gem'
-  ? <span class="badge gem" title="Established, but often missed"><Gem size={12} stroke-width={2.4} /> Gem</span>
-  : <span class="badge new" title="Recently released or gaining momentum"><Sparkles size={12} stroke-width={2.4} /> New</span>}
+  ? <span class="badge gem" title="Established, but often missed">Gem</span>
+  : <span class="badge new" title="Recently released or gaining momentum">New</span>}

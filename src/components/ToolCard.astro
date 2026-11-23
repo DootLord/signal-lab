@@ -4,7 +4,6 @@ import { host } from '../lib/format.ts';
 import KindBadge from './KindBadge.astro';
 import ToolLogo from './ToolLogo.astro';
 import RecPill from './RecPill.astro';
-import { ArrowUpRight, Repeat } from './icons.ts';
 
 interface Props { tool: Tool; }
 const { tool } = Astro.props;
@@ -20,13 +19,11 @@ const source = tool.website ?? tool.repo;
     <KindBadge kind={tool.kind} />
   </div>
   <p class="card-tagline">{tool.tagline}</p>
-  {tool.replaces && (
-    <div class="card-instead"><Repeat size={14} /><span><b>Instead of</b> {tool.replaces}</span></div>
-  )}
+  {tool.replaces && <p class="card-instead"><b>Instead of</b> {tool.replaces}</p>}
   <div class="card-foot">
     <div class="tags">
       {tool.tags.slice(0, 3).map((tag) => <a class="tag" href={`/browse?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
     </div>
-    <span class="card-meta"><RecPill tool={tool} /><ArrowUpRight class="card-arrow" size={18} /></span>
+    <span class="card-meta"><RecPill tool={tool} /></span>
   </div>
 </article>

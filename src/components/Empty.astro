@@ -1,11 +1,8 @@
 ---
-import { Inbox } from './icons.ts';
-
 interface Props { title: string; text?: string; }
 const { title, text } = Astro.props;
 ---
 <div class="empty">
-  <div class="empty-icon"><Inbox size={22} /></div>
   <h3>{title}</h3>
   {text && <p>{text}</p>}
   <slot />

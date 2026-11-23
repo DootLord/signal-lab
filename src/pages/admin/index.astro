@@ -6,7 +6,7 @@ import PageHead from '../../components/PageHead.astro';
 import Empty from '../../components/Empty.astro';
 import { listByStatus, recentScans } from '../../lib/db.ts';
 import { formatDate, timeAgo } from '../../lib/format.ts';
-import { ChevronRight, CircleCheck, Inbox, LayoutGrid, LogOut, Pencil, Plus, Radar, X } from '../../components/icons.ts';
+import { ChevronRight, CircleCheck, Inbox, LogOut, Pencil, Plus } from '../../components/icons.ts';
 
 const pending = listByStatus('pending');
 const published = listByStatus('published');
@@ -16,7 +16,7 @@ const lastScan = scans[0];
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—');
 ---
 <Base title="Admin" nav="admin" crumbs={[{ label: 'Admin' }]}>
-  <PageHead eyebrow="Admin" title="Dashboard" description="Review what the scanner found and manage the catalogue.">
+  <PageHead title="Dashboard" description="Review what the scanner found and manage the catalogue.">
     <div class="btn-row">
       <a class="btn primary" href="/admin/tools/new"><Plus size={16} /> Add a tool</a>
       <a class="btn" href="/admin/import"><Inbox size={15} /> Import</a>
@@ -25,10 +25,10 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB',
   </PageHead>
 
   <div class="stat-tiles">
-    <div class={`stat-tile ${pending.length ? 'highlight' : ''}`}><span class="topic-icon"><Inbox size={18} /></span><div><b>{pending.length}</b><span>waiting for review</span></div></div>
-    <div class="stat-tile"><span class="topic-icon"><LayoutGrid size={18} /></span><div><b>{published.length}</b><span>published</span></div></div>
-    <div class="stat-tile"><span class="topic-icon"><X size={18} /></span><div><b>{rejected.length}</b><span>rejected</span></div></div>
-    <div class="stat-tile"><span class="topic-icon"><Radar size={18} /></span><div><b>{lastScan ? timeAgo(lastScan.started_at) : 'never'}</b><span>last scan</span></div></div>
+    <div class={`stat-tile ${pending.length ? 'highlight' : ''}`}><div><b>{pending.length}</b><span>waiting for review</span></div></div>
+    <div class="stat-tile"><div><b>{published.length}</b><span>published</span></div></div>
+    <div class="stat-tile"><div><b>{rejected.length}</b><span>rejected</span></div></div>
+    <div class="stat-tile"><div><b>{lastScan ? timeAgo(lastScan.started_at) : 'never'}</b><span>last scan</span></div></div>
   </div>
 
   <section class="section" style="margin-top:0">

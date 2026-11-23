@@ -1,7 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
 import PageHead from '../components/PageHead.astro';
-import TopicIcon from '../components/TopicIcon.astro';
 import Empty from '../components/Empty.astro';
 import { listPublished, tagCounts } from '../lib/db.ts';
 import { plural, topicLabel } from '../lib/format.ts';
@@ -9,14 +8,13 @@ import { plural, topicLabel } from '../lib/format.ts';
 const topics = tagCounts().map((t) => ({ ...t, samples: listPublished({ tag: t.tag, order: 'name', limit: 4 }).tools.map((x) => x.name) }));
 ---
 <Base title="Topics" nav="topics" crumbs={[{ label: 'Topics' }]} description="Browse developer tools by language, ecosystem and category.">
-  <PageHead eyebrow="Explore" title="All topics" description={`${plural(topics.length, 'topic')} across languages, ecosystems and categories. Pick one to see every tool tagged with it.`} />
+  <PageHead title="All topics" description={`${plural(topics.length, 'topic')} across languages, ecosystems and categories. Pick one to see every tool tagged with it.`} />
   {topics.length ? (
-    <div class="topic-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+    <div class="topic-entries">
       {topics.map(({ tag, count, samples }) => (
-        <a class="topic big" href={`/browse?tag=${encodeURIComponent(tag)}`}>
-          <span class="topic-icon"><TopicIcon tag={tag} /></span>
-          <span><strong>{topicLabel(tag)}</strong><span>{plural(count, 'tool')}</span></span>
-          <span class="samples">{samples.join(' · ')}{count > samples.length && ' …'}</span>
+        <a class="topic-entry" href={`/browse?tag=${encodeURIComponent(tag)}`}>
+          <strong>{topicLabel(tag)}</strong><span class="count">{plural(count, 'tool')}</span>
+          <span class="samples">{samples.join(', ')}{count > samples.length && ' and more'}</span>
         </a>
       ))}
     </div>

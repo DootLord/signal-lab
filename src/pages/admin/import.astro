@@ -5,7 +5,7 @@ import { createTool, knownIdentifiers, normalizeUrl, slugify } from '../../lib/d
 import { loadDetails } from '../../lib/content.ts';
 import { parseImport } from '../../lib/forms.ts';
 import { backfillLogos } from '../../lib/logos.ts';
-import { ArrowRight, CircleAlert, CircleCheck, Info } from '../../components/icons.ts';
+import { CircleAlert, CircleCheck, Info } from '../../components/icons.ts';
 
 let raw = '';
 let added: string[] = [];
@@ -40,10 +40,10 @@ if (Astro.request.method === 'POST') {
 ---
 <Base title="Import suggestions" nav="admin" crumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Import' }]}>
   <div style="max-width:880px">
-    <PageHead eyebrow="Admin" title="Import suggestions" description="Paste cards prepared outside the site, for example from a manual review. They go into the review queue; nothing is published until you approve it." />
+    <PageHead title="Import suggestions" description="Paste cards prepared outside the site, for example from a manual review. They go into the review queue; nothing is published until you approve it." />
 
     {submitted && added.length > 0 && (
-      <div class="alert success" role="status"><CircleCheck size={16} /><span>Added {added.length} to the review queue: {added.join(', ')}. <a class="link" href="/admin">Review them <ArrowRight size={13} style="display:inline;vertical-align:-2px" /></a></span></div>
+      <div class="alert success" role="status"><CircleCheck size={16} /><span>Added {added.length} to the review queue: {added.join(', ')}. <a class="link" href="/admin">Review them</a></span></div>
     )}
     {skipped.length > 0 && (
       <div class="alert info"><Info size={16} /><span>Skipped {skipped.length} already on the site, in the queue or previously rejected: {skipped.join(', ')}.</span></div>

@@ -1,13 +1,12 @@
 ---
-import '@fontsource-variable/dm-sans';
-import '@fontsource-variable/manrope';
+import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
 import { siteStats, tagCounts } from '../lib/db.ts';
 import { topicLabel } from '../lib/format.ts';
-import TopicIcon from '../components/TopicIcon.astro';
+import BrandMark from '../components/BrandMark.astro';
 import {
-  ChevronRight, Compass, Gem, House, Inbox, Info, LayoutGrid, Lock, Menu, Moon, Radar, Rss, Search, Sparkles, Sun, Tags,
+  ChevronRight, Gem, House, Inbox, Info, LayoutGrid, Lock, Menu, Moon, Rss, Search, Sun, TrendingUp,
 } from '../components/icons.ts';
 
 export type Nav = 'home' | 'browse' | 'gems' | 'new' | 'topics' | 'about' | 'admin' | 'none';
@@ -41,7 +40,8 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary" />
-    <meta name="theme-color" content="#7853cf" />
+    <meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111213" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate" type="application/rss+xml" title="Signal Lab" href="/feed.xml" />
     <script is:inline>
@@ -58,8 +58,8 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
     <div class="app" id="app">
       <aside class="sidebar" id="sidebar" aria-label="Site navigation">
         <a class="brand" href="/">
-          <span class="brand-mark"><Radar size={20} stroke-width={2.4} /></span>
-          <span><span class="brand-name">Signal <span>Lab</span></span><span class="brand-tag">Tools worth knowing</span></span>
+          <BrandMark />
+          <span><span class="brand-name">Signal Lab</span><span class="brand-tag">Tools worth knowing</span></span>
         </a>
 
         <nav aria-label="Discover">
@@ -67,7 +67,7 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
           <a class="nav-item" href="/" aria-current={cur('home')}><House size={18} /> Home</a>
           <a class="nav-item" href="/browse" aria-current={cur('browse')}><LayoutGrid size={18} /> All tools <span class="nav-count">{stats.total}</span></a>
           <a class="nav-item" href="/browse?kind=gem" aria-current={cur('gems')}><Gem size={18} /> Gems <span class="nav-count">{stats.gems}</span></a>
-          <a class="nav-item" href="/browse?kind=new" aria-current={cur('new')}><Sparkles size={18} /> New &amp; moving <span class="nav-count">{stats.fresh}</span></a>
+          <a class="nav-item" href="/browse?kind=new" aria-current={cur('new')}><TrendingUp size={18} /> New &amp; moving <span class="nav-count">{stats.fresh}</span></a>
         </nav>
 
         {topTopics.length > 0 && (
@@ -75,10 +75,10 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
             <div class="nav-label">Topics</div>
             {topTopics.map(({ tag, count }) => (
               <a class="nav-item" href={`/browse?tag=${encodeURIComponent(tag)}`} aria-current={topic === tag ? 'page' : undefined}>
-                <TopicIcon tag={tag} /> {topicLabel(tag)} <span class="nav-count">{count}</span>
+                {topicLabel(tag)} <span class="nav-count">{count}</span>
               </a>
             ))}
-            <a class="nav-item" href="/topics" aria-current={cur('topics')}><Tags size={18} /> All topics <span class="nav-count">{stats.topics}</span></a>
+            <a class="nav-item" href="/topics" aria-current={cur('topics')}>All topics <span class="nav-count">{stats.topics}</span></a>
           </nav>
         )}
 
@@ -89,11 +89,7 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
               <a class="nav-item" href="/admin" aria-current={cur('admin')}><Inbox size={18} /> Review queue {stats.pending > 0 && <span class="nav-count attention">{stats.pending}</span>}</a>
             </nav>
           ) : (
-            <div class="sidebar-card">
-              <strong><Compass size={14} /> How it works</strong>
-              <p>Tools are found by a scanner and reviewed by a human before they appear here.</p>
-              <a class="see-all small" href="/about">Learn more <ChevronRight size={14} /></a>
-            </div>
+            <p class="sidebar-note">Every tool here was checked by a person before it was published. <a href="/about">How tools are chosen</a></p>
           )}
           <a class="nav-item" href="/about" aria-current={cur('about')}><Info size={18} /> About</a>
           <a class="nav-item" href="/feed.xml"><Rss size={18} /> RSS feed</a>
@@ -133,7 +129,7 @@ const cur = (key: Nav) => (nav === key ? 'page' : undefined);
 
         <footer class="site-footer">
           <span class="footer-credit">
-            © {new Date().getUTCFullYear()} Signal Lab · Made by
+            © {new Date().getUTCFullYear()} Signal Lab. Made by
             <a class="made-by" href="https://dootlord.meme" rel="author"><img src="/dootlord.png" alt="" width="22" height="22" loading="lazy" />DootLord</a>
           </span>
           <nav aria-label="Footer">
